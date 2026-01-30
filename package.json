@@ -1,0 +1,41 @@
+{
+  "name": "pdp-faq",
+  "version": "1.0.0",
+  "description": "Generate user-focused FAQs from product pages given URL documents (CSV/JSON/TXT).",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start:cli": "node dist/cli.js",
+    "start:server": "node dist/server.js"
+  },
+  "bin": {
+    "pdp-faq": "dist/cli.js"
+  },
+  "keywords": [
+    "pdp",
+    "faq",
+    "euronics",
+    "cli"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "node-fetch": "^3.3.2",
+    "openai": "^4.73.0",
+    "yargs": "^17.7.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/express": "^4.17.21",
+    "@types/multer": "^1.4.11",
+    "@types/cors": "^2.8.17",
+    "@types/yargs": "^17.0.32",
+    "typescript": "^5.4.5"
+  },
+  "type": "module"
+}

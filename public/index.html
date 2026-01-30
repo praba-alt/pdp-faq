@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PDP FAQ Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- Dark theme + layout -->
+    <style>
+      :root {
+        --bg: #020617;
+        --bg-card: #020617;
+        --border-subtle: #1f2937;
+        --accent: #38bdf8;
+        --accent-soft: rgba(56, 189, 248, 0.1);
+        --accent-strong: rgba(56, 189, 248, 0.25);
+        --text-primary: #e5e7eb;
+        --text-muted: #9ca3af;
+        --danger: #fb7185;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 600px;
+        height: 100vh;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: radial-gradient(circle at top, #0b1120 0, #020617 45%, #000 100%);
+        color: var(--text-primary);
+        display: flex;
+        align-items: stretch;
+        justify-content: center;
+        padding: 1.5rem;
+      }
+
+      .shell {
+        width: 100%;
+        max-width: 1120px;
+        display: grid;
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.5fr);
+        gap: 1.5rem;
+      }
+
+      @media (max-width: 900px) {
+        .shell {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+
+      .panel {
+        border-radius: 1rem;
+        border: 1px solid var(--border-subtle);
+        background:
+          linear-gradient(
+            135deg,
+            rgba(56, 189, 248, 0.06),
+            rgba(56, 189, 248, 0.0)
+          ),
+          radial-gradient(circle at top left, rgba(56, 189, 248, 0.1), transparent 60%),
+          var(--bg-card);
+        padding: 1.25rem 1.4rem 1.3rem;
+        box-shadow:
+          0 18px 45px rgba(15, 23, 42, 0.8),
+          0 0 0 1px rgba(15, 23, 42, 0.8);
+      }
+
+      .panel--results {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.9rem;
+        gap: 0.75rem;
+      }
+
+      h1 {
+        font-size: 1.35rem;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin: 0;
+      }
+
+      .badge {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.18rem 0.45rem;
+        border-radius: 999px;
+        border: 1px solid var(--accent-strong);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+
+      p {
+        margin: 0.4rem 0 0.9rem;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        max-width: 36rem;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 0.9rem;
+        margin-top: 0.5rem;
+      }
+
+      label {
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+      }
+
+      .input-row {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.8rem;
+      }
+
+      .drop-zone {
+        flex: 1;
+        width: 100%;
+        min-height: 3rem;
+        border-radius: 0.75rem;
+        border: 1px dashed rgba(148, 163, 184, 0.6);
+        padding: 0.7rem 0.9rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        background: radial-gradient(
+            circle at top left,
+            rgba(15, 23, 42, 0.9),
+            rgba(15, 23, 42, 0.98)
+          ),
+          #020617;
+        cursor: pointer;
+        transition: border-color 0.15s ease, background-color 0.15s ease,
+          box-shadow 0.15s ease;
+      }
+
+      .drop-zone.is-dragover {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.4);
+        background: radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.18),
+            rgba(15, 23, 42, 0.98)
+          ),
+          #020617;
+      }
+
+      .drop-zone-main {
+        display: flex;
+        flex-direction: column;
+        gap: 0.2rem;
+      }
+
+      .drop-zone-title {
+        font-size: 0.84rem;
+      }
+
+      .drop-zone-hint {
+        font-size: 0.76rem;
+        color: var(--text-muted);
+      }
+
+      .file-name {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        max-width: 220px;
+        overflow: hidden;
+        text-align: right;
+      }
+
+      input[type="file"] {
+        display: none;
+      }
+
+      button {
+        border-radius: 999px;
+        border: 1px solid transparent;
+        background: radial-gradient(circle at top left, #38bdf8, #0ea5e9);
+        color: #0b1120;
+        font-size: 0.85rem;
+        padding: 0.5rem 0.95rem;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        box-shadow:
+          0 8px 20px rgba(56, 189, 248, 0.35),
+          0 0 0 1px rgba(15, 23, 42, 0.8);
+        white-space: nowrap;
+      }
+
+      button span.icon {
+        font-size: 0.9em;
+      }
+
+      button.secondary {
+        background: linear-gradient(
+          135deg,
+          rgba(15, 23, 42, 0.9),
+          rgba(15, 23, 42, 0.98)
+        );
+        color: var(--text-primary);
+        border-color: var(--border-subtle);
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+      }
+
+      button:disabled {
+        opacity: 0.55;
+        cursor: default;
+        box-shadow: none;
+      }
+
+      #status {
+        min-height: 1.1rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      #status.error {
+        color: var(--danger);
+      }
+
+      #actions {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        margin-top: 0.75rem;
+      }
+
+      .results {
+        flex: 1;
+        border-radius: 0.8rem;
+        border: 1px solid rgba(15, 23, 42, 0.95);
+        background: radial-gradient(
+            circle at top left,
+            rgba(15, 23, 42, 0.9),
+            rgba(15, 23, 42, 0.98)
+          ),
+          #020617;
+        padding: 0.8rem 0.9rem 0.85rem;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
+      }
+
+      .results-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+      }
+
+      .results-body {
+        margin-top: 0.2rem;
+        border-radius: 0.6rem;
+        border: 1px solid rgba(31, 41, 55, 0.8);
+        background: radial-gradient(circle at top left, #020617, #000);
+        overflow: auto;
+        flex: 1;
+      }
+
+      .results-banner {
+        min-height: 1.1rem;
+        font-size: 0.8rem;
+        color: var(--accent);
+        margin: 0 0.1rem 0.25rem;
+      }
+
+      pre {
+        margin: 0;
+        padding: 0.85rem 1rem 1rem;
+        font-size: 0.8rem;
+      }
+
+      code {
+        font-family: SFMono-Regular, ui-monospace, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+
+      .history-list button {
+        justify-content: flex-start;
+        text-align: left;
+        white-space: normal;
+      }
+
+      .history-list button.history-active {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.5);
+        background: radial-gradient(
+            circle at top left,
+            rgba(56, 189, 248, 0.15),
+            rgba(15, 23, 42, 0.98)
+          ),
+          #020617;
+      }
+    </style>
+    <!-- JSON syntax highlighting -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css"
+    />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <h1>
+              PDP FAQ Generator
+              <span class="badge">AI</span>
+            </h1>
+            <p>
+              Upload a CSV, JSON or text file containing product URLs. The
+              server will fetch each PDP, extract title, description and specs,
+              then generate FAQs with OpenAI.
+            </p>
+          </div>
+        </div>
+
+        <form id="upload-form">
+          <div>
+            <label for="file-input">Source file</label>
+            <div class="input-row">
+              <div id="drop-zone" class="drop-zone">
+                <div class="drop-zone-main">
+                  <div class="drop-zone-title">
+                    Choose file or drag &amp; drop
+                  </div>
+                  <div class="drop-zone-hint">
+                    CSV, JSON or TXT with product URLs
+                  </div>
+                </div>
+                <div id="file-name" class="file-name">No file selected</div>
+                <input id="file-input" type="file" name="file" required />
+              </div>
+              <div class="input-actions" style="display: flex; align-items: center; gap: 0.6rem;">
+                <button id="submit-btn" type="submit">
+                  <span class="icon">⚡</span>
+                  Generate FAQs
+                </button>
+                <span id="status"></span>
+              </div>
+            </div>
+          </div>
+        </form>
+        <div id="history"></div>
+      </section>
+
+      <section class="panel panel--results">
+        <div class="panel-header">
+          <div class="results-header">
+            <span>JSON output</span>
+            <span id="result-summary"></span>
+          </div>
+          <div id="actions" style="display: none">
+            <button type="button" id="select-all" class="secondary">
+              <span class="icon">⎘</span>
+              Select JSON
+            </button>
+            <button type="button" id="download-json">
+              <span class="icon">⬇</span>
+              Download
+            </button>
+            <button type="button" id="download-csv" class="secondary">
+              <span class="icon">📄</span>
+              CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="results">
+          <div id="results-banner" class="results-banner"></div>
+          <div class="results-body">
+            <pre><code id="results-code" class="json"></code></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const form = document.getElementById("upload-form");
+      const statusEl = document.getElementById("status");
+      const resultsCodeEl = document.getElementById("results-code");
+      const actionsEl = document.getElementById("actions");
+      const selectAllBtn = document.getElementById("select-all");
+      const downloadBtn = document.getElementById("download-json");
+      const downloadCsvBtn = document.getElementById("download-csv");
+      const submitBtn = document.getElementById("submit-btn");
+      const resultSummary = document.getElementById("result-summary");
+      const dropZone = document.getElementById("drop-zone");
+      const fileInput = document.getElementById("file-input");
+      const fileNameLabel = document.getElementById("file-name");
+      const historyEl = document.getElementById("history");
+      const resultsBanner = document.getElementById("results-banner");
+      let lastJson = "";
+
+      const HISTORY_KEY = "pdpFaqHistory";
+      let activeHistoryId = null;
+
+      function renderHistory() {
+        const raw = window.localStorage.getItem(HISTORY_KEY);
+        if (!raw) {
+          historyEl.innerHTML = "";
+          return;
+        }
+        let entries;
+        try {
+          entries = JSON.parse(raw);
+        } catch {
+          historyEl.innerHTML = "";
+          return;
+        }
+        if (!Array.isArray(entries) || !entries.length) {
+          historyEl.innerHTML = "";
+          return;
+        }
+
+        const items = entries
+          .map((entry) => {
+            const date = new Date(entry.timestamp);
+            const labelDate = isNaN(date.getTime())
+              ? ""
+              : date.toLocaleString();
+            const summary = `${entry.success}/${entry.total}`;
+            const isActive =
+              activeHistoryId &&
+              String(entry.id) === String(activeHistoryId);
+            const activeClass = isActive ? " history-active" : "";
+            return `
+            <button type="button" class="secondary${activeClass}" data-id="${entry.id}">
+              ${entry.fileName || "Previous run"} · ${summary} · ${labelDate}
+            </button>`;
+          })
+          .join("");
+
+        historyEl.innerHTML = `
+          <div style="margin-top: 1rem;">
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+              <span class="icon">↺</span> History
+            </div>
+            <div class="history-list" style="display: flex; flex-direction: column; gap: 0.35rem;">
+              ${items}
+            </div>
+          </div>
+        `;
+
+        historyEl.querySelectorAll("button[data-id]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-id");
+            if (activeHistoryId && String(id) === String(activeHistoryId)) {
+              return;
+            }
+            const currentRaw = window.localStorage.getItem(HISTORY_KEY);
+            if (!currentRaw) return;
+            let list;
+            try {
+              list = JSON.parse(currentRaw);
+            } catch {
+              return;
+            }
+            const match = (list || []).find((e) => String(e.id) === String(id));
+            if (!match || !match.json) return;
+
+            lastJson = match.json;
+            resultsCodeEl.textContent = lastJson;
+            if (window.hljs) {
+              window.hljs.highlightElement(resultsCodeEl);
+            }
+            resultSummary.textContent = `${match.success}/${match.total} products`;
+            if (resultsBanner) {
+              const label =
+                match.fileName || "Previous run";
+              resultsBanner.textContent = `Showing saved run: ${label} (${match.success}/${match.total} products)`;
+            }
+            statusEl.textContent = "";
+            statusEl.classList.remove("error");
+            actionsEl.style.display = "block";
+            activeHistoryId = id;
+            renderHistory();
+          });
+        });
+      }
+
+      function addHistoryEntry(entry) {
+        const raw = window.localStorage.getItem(HISTORY_KEY);
+        let list = [];
+        if (raw) {
+          try {
+            list = JSON.parse(raw) || [];
+          } catch {
+            list = [];
+          }
+        }
+        const id = Date.now();
+        const next = [
+          {
+            id,
+            timestamp: new Date().toISOString(),
+            ...entry,
+          },
+          ...list,
+        ].slice(0, 5);
+        window.localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+        renderHistory();
+      }
+
+      function setFileFromFiles(files) {
+        if (!files || !files.length) return;
+        const file = files[0];
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        fileInput.files = dt.files;
+        fileNameLabel.textContent = file.name;
+      }
+
+      dropZone.addEventListener("click", () => {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener("change", () => {
+        setFileFromFiles(fileInput.files);
+      });
+
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("is-dragover");
+      });
+
+      dropZone.addEventListener("dragleave", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("is-dragover");
+      });
+
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("is-dragover");
+        if (!e.dataTransfer || !e.dataTransfer.files.length) return;
+        setFileFromFiles(e.dataTransfer.files);
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const formData = new FormData(form);
+        statusEl.textContent = "";
+        statusEl.classList.remove("error");
+        resultsCodeEl.textContent = "";
+        actionsEl.style.display = "none";
+        resultSummary.textContent = "";
+        if (resultsBanner) {
+          resultsBanner.textContent = "";
+        }
+        lastJson = "";
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="icon">⏳</span>Processing...';
+
+        try {
+          const res = await fetch("/api/upload-urls?ai=1", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || res.statusText);
+          }
+          const data = await res.json();
+          lastJson = JSON.stringify(data, null, 2);
+          resultsCodeEl.textContent = lastJson;
+          if (window.hljs) {
+            window.hljs.highlightElement(resultsCodeEl);
+          }
+
+          if (Array.isArray(data)) {
+            const successCount = data.filter(
+              (item) => item && item.faqs && item.faqs.length
+            ).length;
+            resultSummary.textContent = `${successCount}/${data.length} products`;
+
+            const fileName =
+              fileInput.files && fileInput.files[0]
+                ? fileInput.files[0].name
+                : "";
+            addHistoryEntry({
+              fileName,
+              json: lastJson,
+              total: data.length,
+              success: successCount,
+            });
+          }
+
+          statusEl.textContent = "Done.";
+          actionsEl.style.display = "block";
+        } catch (err) {
+          statusEl.textContent = "Error: " + err.message;
+          statusEl.classList.add("error");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML =
+            '<span class="icon">⚡</span>Generate FAQs';
+        }
+      });
+
+      selectAllBtn.addEventListener("click", () => {
+        if (!lastJson) return;
+        const range = document.createRange();
+        range.selectNodeContents(resultsCodeEl);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        if (!lastJson) return;
+        const blob = new Blob([lastJson], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        a.href = url;
+        a.download = `pdp-faqs-${timestamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      downloadCsvBtn.addEventListener("click", () => {
+        if (!lastJson) return;
+        let data;
+        try {
+          data = JSON.parse(lastJson);
+        } catch {
+          return;
+        }
+        if (!Array.isArray(data)) return;
+
+        const rows = [];
+        rows.push(["sku", "url", "title", "question", "answer"]);
+        data.forEach((item) => {
+          if (!item || !Array.isArray(item.faqs)) return;
+          const sku = item.sku || "";
+          const url = item.url || "";
+          const title = item.title || "";
+          item.faqs.forEach((faq) => {
+            if (!faq) return;
+            rows.push([
+              sku,
+              url,
+              title,
+              faq.question || "",
+              faq.answer || "",
+            ]);
+          });
+        });
+
+        const escapeCell = (val) => {
+          const s = String(val ?? "");
+          if (/[",\n]/.test(s)) {
+            return '"' + s.replace(/"/g, '""') + '"';
+          }
+          return s;
+        };
+
+        const csv = rows
+          .map((row) => row.map(escapeCell).join(","))
+          .join("\r\n");
+
+        const blob = new Blob([csv], {
+          type: "text/csv;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        a.href = url;
+        a.download = `pdp-faqs-${timestamp}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      if (window.hljs) {
+        window.hljs.highlightElement(resultsCodeEl);
+      }
+
+      renderHistory();
+    </script>
+  </body>
+</html>
