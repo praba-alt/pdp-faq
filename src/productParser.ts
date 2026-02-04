@@ -46,16 +46,16 @@ function extractBestDescription(
 ): string | undefined {
   const candidates: string[] = [];
 
-  $('[class*="description"], [id*="description"], [class*="overview"]').each(
-    (_, el) => {
-      const cloned = $(el).clone();
-      cloned.find("button, a").remove();
-      const text = cloned.text().replace(/\s+/g, " ").trim();
-      if (text) {
-        candidates.push(text);
-      }
+  $(
+    '[class*="description"], [id*="description"], [class*="overview"], .tab-details, .format-content--product-tabs, .b2c-tabs__content--details'
+  ).each((_, el) => {
+    const cloned = $(el).clone();
+    cloned.find("button, a").remove();
+    const text = cloned.text().replace(/\s+/g, " ").trim();
+    if (text) {
+      candidates.push(text);
     }
-  );
+  });
 
   let best = candidates.sort((a, b) => b.length - a.length)[0] || "";
 
@@ -146,8 +146,14 @@ function extractSpecsFromTables(
 ): void {
   $("table").each((_: number, table: any) => {
     const $table = $(table);
-    const headingText = $table.prev("h1,h2,h3,h4,h5").text().toLowerCase();
-    if (headingText && !/spec|tech|feature|detail/.test(headingText)) return;
+    const isClassificationTable =
+      $table.hasClass("classifications") ||
+      $table.hasClass("flix-std-specs-table");
+
+    if (!isClassificationTable) {
+      const headingText = $table.prev("h1,h2,h3,h4,h5").text().toLowerCase();
+      if (headingText && !/spec|tech|feature|detail/.test(headingText)) return;
+    }
 
     $table.find("tr").each((__: number, tr: any) => {
       const cells = $(tr).find("th,td");

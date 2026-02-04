@@ -50,17 +50,24 @@ async function main() {
   for (const item of items) {
     const url = item.url;
     try {
+      // Always fetch the PDP HTML to get up-to-date specs.
+      // Feed-provided fields are only used as fallbacks/overrides.
       // eslint-disable-next-line no-console
       console.log(`Fetching: ${url}`);
       const html = await fetchHtml(url);
       const parsed = parseProductHtml(html);
+      const feedSpecs =
+        ((item as any).specs as Record<string, string> | undefined) ?? {};
       const baseProduct = {
         url,
-        title: parsed.title || item.title || "",
-        description: parsed.description,
-        metaDescription: parsed.metaDescription,
-        specs: parsed.specs,
-        sku: item.sku ?? parsed.sku,
+        title: parsed.title || (item as any).title || "",
+        description: parsed.description || (item as any).description,
+        metaDescription: parsed.metaDescription ?? (item as any).metaDescription,
+        specs: {
+          ...(parsed.specs ?? {}),
+          ...feedSpecs,
+        },
+        sku: item.sku ?? (parsed as any).sku ?? (item as any).sku,
       };
 
       if (useAI && process.env.OPENAI_API_KEY) {
@@ -71,9 +78,9 @@ async function main() {
             `Success (AI): ${url} — ${faqs.length} FAQ(s) generated`
           );
           results.push({
-            sku: parsed.sku ?? "",
+            sku: baseProduct.sku ?? "",
             url,
-            title: parsed.title,
+            title: baseProduct.title,
             faqs,
           });
           continue;
@@ -89,7 +96,7 @@ async function main() {
             }`
           );
           results.push({
-            sku: parsed.sku ?? "",
+            sku: baseProduct.sku ?? "",
             url,
             title: fallback.title,
             faqs: fallback.faqs,
@@ -105,7 +112,7 @@ async function main() {
         `Success (rule-based): ${url} — ${faq.faqs.length} FAQ(s) generated`
       );
       results.push({
-        sku: parsed.sku ?? "",
+        sku: baseProduct.sku ?? "",
         url,
         title: faq.title,
         faqs: faq.faqs,

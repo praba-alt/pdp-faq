@@ -312,6 +312,42 @@
           ),
           #020617;
       }
+
+      .tabs {
+        display: flex;
+        gap: 0.4rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.8rem;
+      }
+
+      .tab-toggle {
+        border-radius: 999px;
+        border: 1px solid var(--border-subtle);
+        background: linear-gradient(
+          135deg,
+          rgba(15, 23, 42, 0.95),
+          rgba(15, 23, 42, 1)
+        );
+        color: var(--text-muted);
+        padding: 0.25rem 0.7rem;
+        cursor: pointer;
+        box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.9);
+      }
+
+      .tab-toggle.tab-toggle-active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-soft);
+        box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45);
+      }
+
+      .tab-panel {
+        display: none;
+      }
+
+      .tab-panel.tab-panel-active {
+        display: block;
+      }
     </style>
     <!-- JSON syntax highlighting -->
     <link
@@ -339,28 +375,192 @@
         </div>
 
         <form id="upload-form">
-          <div>
-            <label for="file-input">Source file</label>
-            <div class="input-row">
-              <div id="drop-zone" class="drop-zone">
-                <div class="drop-zone-main">
-                  <div class="drop-zone-title">
-                    Choose file or drag &amp; drop
+          <div class="tabs" role="tablist" aria-label="Input type">
+            <button
+              type="button"
+              class="tab-toggle tab-toggle-active"
+              data-mode="file"
+            >
+              File upload
+            </button>
+            <button
+              type="button"
+              class="tab-toggle"
+              data-mode="urls"
+            >
+              Paste URLs
+            </button>
+            <button
+              type="button"
+              class="tab-toggle"
+              data-mode="api"
+            >
+              API URL
+            </button>
+          </div>
+
+          <div
+            id="tab-panel-file"
+            class="tab-panel tab-panel-active"
+            data-mode="file"
+          >
+            <div>
+              <label for="file-input">Source file</label>
+              <div class="input-row">
+                <div id="drop-zone" class="drop-zone">
+                  <div class="drop-zone-main">
+                    <div class="drop-zone-title">
+                      Choose file or drag &amp; drop
+                    </div>
+                    <div class="drop-zone-hint">
+                      CSV, JSON or TXT with product URLs
+                    </div>
                   </div>
-                  <div class="drop-zone-hint">
-                    CSV, JSON or TXT with product URLs
-                  </div>
+                  <div id="file-name" class="file-name">No file selected</div>
+                  <input id="file-input" type="file" name="file" required />
                 </div>
-                <div id="file-name" class="file-name">No file selected</div>
-                <input id="file-input" type="file" name="file" required />
+                <div
+                  class="input-actions"
+                  style="display: flex; align-items: center; gap: 0.6rem;"
+                >
+                  <button id="submit-file-btn" type="button">
+                    <span class="icon">⚡</span>
+                    Generate FAQs from file
+                  </button>
+                </div>
               </div>
-              <div class="input-actions" style="display: flex; align-items: center; gap: 0.6rem;">
-                <button id="submit-btn" type="submit">
+            </div>
+          </div>
+
+          <div
+            id="tab-panel-urls"
+            class="tab-panel"
+            data-mode="urls"
+          >
+            <div>
+              <label for="urls-input">Paste product URLs</label>
+              <textarea
+                id="urls-input"
+                name="urls"
+                rows="4"
+                style="
+                  width: 100%;
+                  margin-top: 0.35rem;
+                  border-radius: 0.5rem;
+                  border: 1px solid var(--border-subtle);
+                  padding: 0.5rem 0.6rem;
+                  background: #020617;
+                  color: var(--text-primary);
+                  font-size: 0.8rem;
+                  resize: vertical;
+                "
+                placeholder="One product URL per line."
+              ></textarea>
+              <div
+                class="input-actions"
+                style="margin-top: 0.6rem; display: flex; align-items: center; gap: 0.6rem;"
+              >
+                <button id="submit-urls-btn" type="button">
                   <span class="icon">⚡</span>
-                  Generate FAQs
+                  Generate FAQs from URLs
                 </button>
-                <span id="status"></span>
               </div>
+            </div>
+          </div>
+
+          <div
+            id="tab-panel-api"
+            class="tab-panel"
+            data-mode="api"
+          >
+            <div>
+              <label for="api-url-input">API URL</label>
+              <input
+                id="api-url-input"
+                name="apiUrl"
+                type="text"
+                placeholder="Endpoint returning CSV, JSON or text with product URLs"
+                style="
+                  width: 100%;
+                  margin-top: 0.35rem;
+                  border-radius: 999px;
+                  border: 1px solid var(--border-subtle);
+                  padding: 0.45rem 0.7rem;
+                  background: #020617;
+                  color: var(--text-primary);
+                  font-size: 0.8rem;
+                "
+              />
+              <div
+                class="input-actions"
+                style="margin-top: 0.6rem; display: flex; align-items: center; gap: 0.6rem;"
+              >
+                <button id="submit-api-btn" type="button">
+                  <span class="icon">⚡</span>
+                  Generate FAQs from API
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div
+            style="
+              margin-top: 1.1rem;
+              display: flex;
+              flex-direction: column;
+              gap: 0.7rem;
+            "
+          >
+            <div>
+              <label for="range-start">Optional item range</label>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 0.4rem;
+                  margin-top: 0.35rem;
+                  font-size: 0.8rem;
+                "
+              >
+                <span>From</span>
+                <input
+                  id="range-start"
+                  type="number"
+                  min="1"
+                  placeholder="1"
+                  style="
+                    width: 4rem;
+                    border-radius: 999px;
+                    border: 1px solid var(--border-subtle);
+                    padding: 0.25rem 0.5rem;
+                    background: #020617;
+                    color: var(--text-primary);
+                  "
+                />
+                <span>to</span>
+                <input
+                  id="range-end"
+                  type="number"
+                  min="1"
+                  placeholder="50"
+                  style="
+                    width: 4rem;
+                    border-radius: 999px;
+                    border: 1px solid var(--border-subtle);
+                    padding: 0.25rem 0.5rem;
+                    background: #020617;
+                    color: var(--text-primary);
+                  "
+                />
+                <span>(e.g. 1–50 or 51–100)</span>
+              </div>
+            </div>
+
+            <div
+              class="input-actions"
+              style="font-size: 0.8rem; min-height: 1.1rem;"
+            >
+              <span id="status"></span>
             </div>
           </div>
         </form>
@@ -378,13 +578,23 @@
               <span class="icon">⎘</span>
               Select JSON
             </button>
+            <select
+              id="download-format"
+              style="
+                border-radius: 999px;
+                border: 1px solid var(--border-subtle);
+                background: #020617;
+                color: var(--text-primary);
+                font-size: 0.8rem;
+                padding: 0.3rem 0.6rem;
+              "
+            >
+              <option value="json">JSON</option>
+              <option value="csv">CSV</option>
+            </select>
             <button type="button" id="download-json">
               <span class="icon">⬇</span>
               Download
-            </button>
-            <button type="button" id="download-csv" class="secondary">
-              <span class="icon">📄</span>
-              CSV
             </button>
           </div>
         </div>
@@ -405,18 +615,31 @@
       const actionsEl = document.getElementById("actions");
       const selectAllBtn = document.getElementById("select-all");
       const downloadBtn = document.getElementById("download-json");
-      const downloadCsvBtn = document.getElementById("download-csv");
-      const submitBtn = document.getElementById("submit-btn");
+      const downloadFormatSelect = document.getElementById("download-format");
+      const submitFileBtn = document.getElementById("submit-file-btn");
+      const submitUrlsBtn = document.getElementById("submit-urls-btn");
+      const submitApiBtn = document.getElementById("submit-api-btn");
       const resultSummary = document.getElementById("result-summary");
       const dropZone = document.getElementById("drop-zone");
       const fileInput = document.getElementById("file-input");
       const fileNameLabel = document.getElementById("file-name");
       const historyEl = document.getElementById("history");
       const resultsBanner = document.getElementById("results-banner");
+      const urlsInput = document.getElementById("urls-input");
+      const apiUrlInput = document.getElementById("api-url-input");
+      const rangeStartInput = document.getElementById("range-start");
+      const rangeEndInput = document.getElementById("range-end");
+      const tabButtons = Array.from(
+        document.querySelectorAll(".tab-toggle")
+      );
+      const tabPanels = Array.from(
+        document.querySelectorAll(".tab-panel")
+      );
       let lastJson = "";
 
       const HISTORY_KEY = "pdpFaqHistory";
       let activeHistoryId = null;
+      let activeMode = "file";
 
       function renderHistory() {
         const raw = window.localStorage.getItem(HISTORY_KEY);
@@ -559,9 +782,65 @@
         setFileFromFiles(e.dataTransfer.files);
       });
 
-      form.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const formData = new FormData(form);
+      function setActiveMode(mode) {
+        activeMode = mode;
+        tabButtons.forEach((btn) => {
+          const btnMode = btn.getAttribute("data-mode");
+          if (btnMode === mode) {
+            btn.classList.add("tab-toggle-active");
+          } else {
+            btn.classList.remove("tab-toggle-active");
+          }
+        });
+        tabPanels.forEach((panel) => {
+          const panelMode = panel.getAttribute("data-mode");
+          if (panelMode === mode) {
+            panel.classList.add("tab-panel-active");
+          } else {
+            panel.classList.remove("tab-panel-active");
+          }
+        });
+      }
+
+      tabButtons.forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const mode = btn.getAttribute("data-mode");
+          if (!mode || mode === activeMode) return;
+          setActiveMode(mode);
+        });
+      });
+
+      async function handleProcess(mode) {
+        const urlsText = urlsInput ? urlsInput.value.trim() : "";
+        const apiUrl = apiUrlInput ? apiUrlInput.value.trim() : "";
+        const hasDirectUrls = urlsText.length > 0;
+        const hasApiUrl = apiUrl.length > 0;
+
+        let activeButton = null;
+        if (mode === "file") activeButton = submitFileBtn;
+        else if (mode === "urls") activeButton = submitUrlsBtn;
+        else if (mode === "api") activeButton = submitApiBtn;
+
+        if (mode === "file") {
+          if (!fileInput.files || !fileInput.files.length) {
+            statusEl.textContent = "Please choose a file first.";
+            statusEl.classList.add("error");
+            return;
+          }
+        } else if (mode === "urls") {
+          if (!hasDirectUrls) {
+            statusEl.textContent = "Please paste at least one product URL.";
+            statusEl.classList.add("error");
+            return;
+          }
+        } else if (mode === "api") {
+          if (!hasApiUrl) {
+            statusEl.textContent = "Please enter an API URL.";
+            statusEl.classList.add("error");
+            return;
+          }
+        }
+
         statusEl.textContent = "";
         statusEl.classList.remove("error");
         resultsCodeEl.textContent = "";
@@ -571,14 +850,61 @@
           resultsBanner.textContent = "";
         }
         lastJson = "";
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span class="icon">⏳</span>Processing...';
+        if (activeButton) {
+          activeButton.disabled = true;
+          activeButton.innerHTML =
+            '<span class="icon">⏳</span>Processing...';
+        }
 
         try {
-          const res = await fetch("/api/upload-urls?ai=1", {
-            method: "POST",
-            body: formData,
-          });
+          const rangeStart = rangeStartInput
+            ? parseInt(rangeStartInput.value, 10) || null
+            : null;
+          const rangeEnd = rangeEndInput
+            ? parseInt(rangeEndInput.value, 10) || null
+            : null;
+
+          let res;
+
+          if (mode === "urls" || mode === "api") {
+            const urls =
+              mode === "urls" && urlsText
+                ? urlsText
+                    .split(/\r?\n/)
+                    .map((l) => l.trim())
+                    .filter((l) => l.length > 0)
+                : [];
+
+            const body = {
+              urls: mode === "urls" ? urls : undefined,
+              apiUrl: mode === "api" ? apiUrl : undefined,
+              ai: true,
+              rangeStart: rangeStart ?? undefined,
+              rangeEnd: rangeEnd ?? undefined,
+            };
+
+            res = await fetch("/api/process-urls", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(body),
+            });
+          } else {
+            const formData = new FormData();
+            if (fileInput.files && fileInput.files[0]) {
+              formData.append("file", fileInput.files[0]);
+            }
+            const params = new URLSearchParams({ ai: "1" });
+            if (rangeStart) params.set("start", String(rangeStart));
+            if (rangeEnd) params.set("end", String(rangeEnd));
+
+            res = await fetch(`/api/upload-urls?${params.toString()}`, {
+              method: "POST",
+              body: formData,
+            });
+          }
+
           if (!res.ok) {
             const text = await res.text();
             throw new Error(text || res.statusText);
@@ -596,10 +922,18 @@
             ).length;
             resultSummary.textContent = `${successCount}/${data.length} products`;
 
-            const fileName =
-              fileInput.files && fileInput.files[0]
-                ? fileInput.files[0].name
-                : "";
+            let fileName = "";
+            if (mode === "file") {
+              fileName =
+                fileInput.files && fileInput.files[0]
+                  ? fileInput.files[0].name
+                  : "";
+            } else if (mode === "urls") {
+              fileName = "Pasted URLs";
+            } else if (mode === "api") {
+              fileName = apiUrl || "API URL";
+            }
+
             addHistoryEntry({
               fileName,
               json: lastJson,
@@ -614,11 +948,39 @@
           statusEl.textContent = "Error: " + err.message;
           statusEl.classList.add("error");
         } finally {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML =
-            '<span class="icon">⚡</span>Generate FAQs';
+          if (activeButton) {
+            activeButton.disabled = false;
+            if (mode === "file") {
+              activeButton.innerHTML =
+                '<span class="icon">⚡</span>Generate FAQs from file';
+            } else if (mode === "urls") {
+              activeButton.innerHTML =
+                '<span class="icon">⚡</span>Generate FAQs from URLs';
+            } else if (mode === "api") {
+              activeButton.innerHTML =
+                '<span class="icon">⚡</span>Generate FAQs from API';
+            }
+          }
         }
-      });
+      }
+
+      if (submitFileBtn) {
+        submitFileBtn.addEventListener("click", () => {
+          handleProcess("file");
+        });
+      }
+
+      if (submitUrlsBtn) {
+        submitUrlsBtn.addEventListener("click", () => {
+          handleProcess("urls");
+        });
+      }
+
+      if (submitApiBtn) {
+        submitApiBtn.addEventListener("click", () => {
+          handleProcess("api");
+        });
+      }
 
       selectAllBtn.addEventListener("click", () => {
         if (!lastJson) return;
@@ -631,20 +993,25 @@
 
       downloadBtn.addEventListener("click", () => {
         if (!lastJson) return;
-        const blob = new Blob([lastJson], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        a.href = url;
-        a.download = `pdp-faqs-${timestamp}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
+        const format =
+          downloadFormatSelect && downloadFormatSelect.value === "csv"
+            ? "csv"
+            : "json";
 
-      downloadCsvBtn.addEventListener("click", () => {
-        if (!lastJson) return;
+        if (format === "json") {
+          const blob = new Blob([lastJson], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+          a.href = url;
+          a.download = `pdp-faqs-${timestamp}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          return;
+        }
+
         let data;
         try {
           data = JSON.parse(lastJson);

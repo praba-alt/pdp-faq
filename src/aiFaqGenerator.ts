@@ -35,6 +35,7 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
       content:
         "You write concise, shopper-focused FAQs for ecommerce product pages. " +
         "Only use the provided description and specifications. Do not invent technical details. " +
+        "Never mention or infer price, cost, discounts, promotions, special offers, or stock/availability status. " +
         "Always respond with pure JSON in the requested format, no extra text.",
     },
     {
@@ -54,6 +55,7 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
         `- Questions should be specific and helpful.\n` +
         `- Focus primarily on product features and specifications (size, dimensions, materials, capacity, performance, connectivity, compatibility, care instructions, usage scenarios, etc.) based on the product type.\n` +
         `- You may include at most 2 FAQs in total about delivery, shipping, returns, refunds, or exchanges; all other FAQs should be about the product itself.\n` +
+        `- Do not include FAQs about price, cost, discounts, promotions, or whether the product is in stock or available.\n` +
         `- Answers must be grounded only in the description/specs.\n` +
         `- If something (especially a feature, specification or technical detail) is not clearly stated, do not claim it as fact and avoid creating a FAQ whose main point is that the information is missing.\n` +
         `- Aim for up to 10 FAQs; if there is not enough product information, it's fine to return fewer.`,
@@ -111,6 +113,15 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
     (faq) =>
       !missingInfoRegex.test(faq.question) &&
       !missingInfoRegex.test(faq.answer)
+  );
+
+  // Filter out FAQs about dynamic commerce info such as price or availability
+  const dynamicInfoRegex =
+    /(price|cost|discount|deal|offer|promotion|special offer|save [0-9]|in stock|out of stock|availability|available to order|back[- ]?order|backorder|pre[- ]?order)/i;
+  faqs = faqs.filter(
+    (faq) =>
+      !dynamicInfoRegex.test(faq.question) &&
+      !dynamicInfoRegex.test(faq.answer)
   );
 
   // Separate delivery/returns questions and cap them to 2

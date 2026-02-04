@@ -1,5 +1,6 @@
 import fs from "fs";
 import path from "path";
+import { load as loadXml } from "cheerio";
 
 export type UrlList = string[];
 
@@ -7,11 +8,19 @@ export interface InputItem {
   sku?: string;
   url: string;
   title?: string;
+  description?: string;
+  metaDescription?: string;
+  specs?: Record<string, string>;
 }
 
 function isProbablyJson(content: string): boolean {
   const trimmed = content.trim();
   return trimmed.startsWith("{") || trimmed.startsWith("[");
+}
+
+function isProbablyXml(content: string): boolean {
+  const trimmed = content.trim();
+  return trimmed.startsWith("<") && !isProbablyJson(content);
 }
 
 function parseTextToItems(content: string): InputItem[] {
@@ -112,10 +121,147 @@ function parseJsonToItems(content: string): InputItem[] {
   throw new Error("Unsupported JSON shape for URLs");
 }
 
-export function loadInputItems(filePath: string): InputItem[] {
-  const fullPath = path.resolve(filePath);
-  const content = fs.readFileSync(fullPath, "utf8");
-  const ext = path.extname(fullPath).toLowerCase();
+function parseXmlToItems(content: string): InputItem[] {
+  const $ = loadXml(content, { xmlMode: true });
+  const items: InputItem[] = [];
+
+  const pushItem = (input: {
+    url?: string;
+    sku?: string;
+    title?: string;
+    description?: string;
+    specs?: Record<string, string>;
+  }) => {
+    if (!input.url) return;
+    const url = input.url.replace(/^\uFEFF/, "").trim();
+    if (!/^https?:\/\//i.test(url)) return;
+    const sku = input.sku?.replace(/^\uFEFF/, "").trim();
+    const title = input.title?.trim();
+    const description = input.description?.trim();
+    const specs = input.specs ?? {};
+
+    items.push({
+      url,
+      ...(sku ? { sku } : null),
+      ...(title ? { title } : null),
+      ...(description ? { description } : null),
+      ...(Object.keys(specs).length ? { specs } : null),
+    });
+  };
+
+  const containers = $("product, item, entry");
+  if (containers.length > 0) {
+    containers.each((_: number, el: any) => {
+      const node = $(el);
+      let urlText: string | undefined =
+        node.find("url, link, g\\:link").first().text().trim() ||
+        node.attr("url")?.trim() ||
+        node.attr("link")?.trim();
+
+      let skuText: string | undefined =
+        node.find("sku, id, g\\:sku, g\\:id").first().text().trim() ||
+        node.attr("sku")?.trim() ||
+        node.attr("id")?.trim();
+
+      let titleText: string | undefined =
+        node.find("title, name, g\\:title, g\\:name").first().text().trim() ||
+        node.attr("title")?.trim() ||
+        node.attr("name")?.trim();
+
+      let descriptionText: string | undefined =
+        node.find("description, g\\:description").first().text().trim() ||
+        undefined;
+
+      const specs: Record<string, string> = {};
+
+      if (!urlText) {
+        node.find("*").each((__: number, child: any) => {
+          if (urlText) return;
+          const text = $(child).text().trim();
+          if (/^https?:\/\//i.test(text)) {
+            urlText = text;
+          }
+        });
+      }
+
+      if (!skuText) {
+        node.find("*").each((__: number, child: any) => {
+          if (skuText) return;
+          const text = $(child).text().trim();
+          if (text && text.length > 0 && text.length <= 64 && !/\s/.test(text)) {
+            skuText = text;
+          }
+        });
+      }
+
+      if (!titleText) {
+        node.find("*").each((__: number, child: any) => {
+          if (titleText) return;
+          const text = $(child).text().trim();
+          if (text && /\s/.test(text) && text.length >= 4) {
+            titleText = text;
+          }
+        });
+      }
+
+      const ignoredTags = new Set([
+        "url",
+        "link",
+        "g:link",
+        "id",
+        "g:id",
+        "sku",
+        "g:sku",
+        "title",
+        "g:title",
+        "name",
+        "g:name",
+        "description",
+        "g:description",
+      ]);
+
+      node.find("*").each((__: number, child: any) => {
+        const tag = child.tagName ? String(child.tagName).toLowerCase() : "";
+        if (!tag || ignoredTags.has(tag)) return;
+        const text = $(child).text().trim();
+        if (!text) return;
+        const key = tag.replace(/^g:/, "");
+        if (!specs[key]) {
+          specs[key] = text;
+        }
+      });
+
+      pushItem({
+        url: urlText,
+        sku: skuText,
+        title: titleText,
+        description: descriptionText,
+        specs,
+      });
+    });
+
+    return items;
+  }
+
+  $("url, link, g\\:link").each((_: number, el: any) => {
+    const node = $(el);
+    const urlText =
+      node.text().trim() ||
+      node.attr("href")?.trim() ||
+      node.attr("url")?.trim();
+    pushItem({ url: urlText });
+  });
+
+  return items;
+}
+
+export function loadInputItemsFromContent(
+  content: string,
+  filenameHint?: string
+): InputItem[] {
+  const ext = filenameHint
+    ? path.extname(filenameHint).toLowerCase()
+    : "";
 
   if (ext === ".json") {
     return parseJsonToItems(content);
@@ -125,8 +271,16 @@ export function loadInputItems(filePath: string): InputItem[] {
     return parseCsvToItems(content);
   }
 
+  if (ext === ".xml") {
+    return parseXmlToItems(content);
+  }
+
   if (isProbablyJson(content)) {
     return parseJsonToItems(content);
+  }
+
+  if (isProbablyXml(content)) {
+    return parseXmlToItems(content);
   }
 
   if (content.includes(",")) {
@@ -135,6 +289,12 @@ export function loadInputItems(filePath: string): InputItem[] {
   }
 
   return parseTextToItems(content);
+}
+
+export function loadInputItems(filePath: string): InputItem[] {
+  const fullPath = path.resolve(filePath);
+  const content = fs.readFileSync(fullPath, "utf8");
+  return loadInputItemsFromContent(content, fullPath);
 }
 
 export function loadUrls(filePath: string): UrlList {
