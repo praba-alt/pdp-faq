@@ -24,6 +24,11 @@ function parseUseAI(value: unknown): boolean {
   return s === "1" || s === "true";
 }
 
+function parseStyle(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim();
+  return undefined;
+}
+
 function applyRange(
   items: InputItem[],
   startRaw: unknown,
@@ -52,7 +57,8 @@ function applyRange(
 
 async function processItems(
   items: InputItem[],
-  useAI: boolean
+  useAI: boolean,
+  style?: string
 ): Promise<
   {
     sku: string;
@@ -82,18 +88,26 @@ async function processItems(
       const baseProduct = {
         sku: item.sku ?? parsed.sku,
         url,
-        title: parsed.title || item.title || "",
-        description: parsed.description || item.description,
+        title: parsed.title || parsed.jsonTitle || item.title || "",
+        description:
+          parsed.description ||
+          parsed.jsonDescription ||
+          parsed.jsonContent ||
+          item.description,
         metaDescription: parsed.metaDescription ?? item.metaDescription,
         specs: {
           ...(parsed.specs ?? {}),
           ...(item.specs ?? {}),
         },
+        jsonId: parsed.jsonId,
+        jsonTitle: parsed.jsonTitle,
+        jsonDescription: parsed.jsonDescription,
+        jsonContent: parsed.jsonContent,
       };
 
       if (useAI && process.env.OPENAI_API_KEY) {
         try {
-          const faqs = await generateFaqsWithAI(baseProduct);
+          const faqs = await generateFaqsWithAI(baseProduct, { style });
           results.push({
             sku: baseProduct.sku ?? "",
             url,
@@ -158,6 +172,7 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
 
     const filePath = req.file.path;
     const useAI = parseUseAI(req.query.ai);
+    const style = parseStyle(req.query.style);
     const allItems = loadInputItems(filePath);
     const { items, startIndex, endIndex } = applyRange(
       allItems,
@@ -181,7 +196,7 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
           : "")
     );
 
-    const results = await processItems(items, useAI);
+    const results = await processItems(items, useAI, style);
 
     fs.unlink(filePath, () => {});
     return res.json(results);
@@ -195,6 +210,7 @@ app.post("/api/process-urls", async (req, res) => {
     const body = req.body ?? {};
     const useAI =
       "ai" in body ? parseUseAI(body.ai) : parseUseAI(req.query.ai);
+    const style = parseStyle(body.style ?? req.query.style);
 
     const directUrlsRaw = Array.isArray(body.urls) ? body.urls : [];
     const apiUrl =
@@ -251,7 +267,7 @@ app.post("/api/process-urls", async (req, res) => {
           : "")
     );
 
-    const results = await processItems(rangedItems, useAI);
+    const results = await processItems(rangedItems, useAI, style);
     return res.json(results);
   } catch (err: any) {
     return res.status(500).json({ error: err?.message ?? String(err) });

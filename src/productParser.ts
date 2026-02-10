@@ -6,6 +6,10 @@ export interface ParsedProduct {
   metaDescription?: string;
   specs: Record<string, string>;
   sku?: string;
+  jsonId?: string;
+  jsonTitle?: string;
+  jsonDescription?: string;
+  jsonContent?: string;
 }
 
 export function parseProductHtml(html: string): ParsedProduct {
@@ -30,6 +34,7 @@ export function parseProductHtml(html: string): ParsedProduct {
   extractSpecsFromLists($, specs);
 
   const sku = extractSkuFromJsonLd($);
+  const jsonData = extractJsonProductData($);
 
   return {
     title,
@@ -37,6 +42,10 @@ export function parseProductHtml(html: string): ParsedProduct {
     metaDescription,
     specs,
     sku,
+    jsonId: jsonData.jsonId,
+    jsonTitle: jsonData.title,
+    jsonDescription: jsonData.description,
+    jsonContent: jsonData.content,
   };
 }
 
@@ -110,6 +119,157 @@ function extractSkuFromJsonLd($: CheerioAPI): string | undefined {
   });
 
   return skus[0];
+}
+
+function extractJsonProductData(
+  $: CheerioAPI
+): { jsonId?: string; title?: string; description?: string; content?: string } {
+  const candidates: Array<{
+    jsonId?: string;
+    title?: string;
+    description?: string;
+    content?: string;
+    score: number;
+  }> = [];
+
+  $("script").each((_, el) => {
+    const node = $(el);
+    const type = (node.attr("type") || "").toLowerCase();
+    const jsonId = node.attr("id")?.trim();
+    const idHint = (jsonId || "").toLowerCase();
+    const isJsonType =
+      type === "application/json" || type === "application/ld+json";
+    const hasJsonId = idHint.includes("json") || idHint.includes("data");
+
+    if (!isJsonType && !hasJsonId) return;
+
+    const raw = node.contents().text().trim();
+    if (!raw) return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      return;
+    }
+
+    const extracted = extractFromJson(parsed);
+    if (!extracted.title && !extracted.description && !extracted.content) {
+      return;
+    }
+
+    const score =
+      (extracted.title ? 2 : 0) +
+      (extracted.description ? 3 : 0) +
+      (extracted.content ? 2 : 0) +
+      Math.min(5, Math.floor((extracted.content?.length || 0) / 400));
+
+    candidates.push({
+      jsonId,
+      title: extracted.title,
+      description: extracted.description,
+      content: extracted.content,
+      score,
+    });
+  });
+
+  if (!candidates.length) {
+    return {};
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0];
+}
+
+function extractFromJson(
+  root: unknown
+): { title?: string; description?: string; content?: string } {
+  const titleKeys = new Set([
+    "title",
+    "name",
+    "producttitle",
+    "product_title",
+    "productname",
+    "product_name",
+  ]);
+  const descriptionKeys = new Set([
+    "description",
+    "productdescription",
+    "product_description",
+    "shortdescription",
+    "short_description",
+    "summary",
+    "overview",
+  ]);
+  const contentKeys = new Set([
+    "content",
+    "body",
+    "details",
+    "html",
+    "contenthtml",
+    "longdescription",
+    "long_description",
+    "fulldescription",
+    "full_description",
+  ]);
+
+  let bestTitle = "";
+  let bestDescription = "";
+  let bestContent = "";
+
+  const stack: unknown[] = [root];
+  let seenNodes = 0;
+  const maxNodes = 20000;
+
+  while (stack.length > 0 && seenNodes < maxNodes) {
+    const node = stack.pop();
+    seenNodes += 1;
+
+    if (!node || typeof node !== "object") continue;
+
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        stack.push(item);
+      }
+      continue;
+    }
+
+    const obj = node as Record<string, unknown>;
+    for (const [rawKey, value] of Object.entries(obj)) {
+      const key = normaliseKey(rawKey);
+      if (typeof value === "string") {
+        const clean = stripHtml(value).trim();
+        if (!clean) continue;
+
+        if (titleKeys.has(key)) {
+          if (clean.length > bestTitle.length) bestTitle = clean;
+        }
+        if (descriptionKeys.has(key)) {
+          if (clean.length > bestDescription.length) bestDescription = clean;
+        }
+        if (contentKeys.has(key)) {
+          if (clean.length > bestContent.length) bestContent = clean;
+        }
+      } else if (value && typeof value === "object") {
+        stack.push(value);
+      }
+    }
+  }
+
+  return {
+    title: bestTitle || undefined,
+    description: bestDescription || undefined,
+    content: bestContent || undefined,
+  };
+}
+
+function stripHtml(input: string): string {
+  if (!/[<>]/.test(input)) return input;
+  return input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function normaliseKey(key: string): string {
+  return key.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
 function collectSkusFromNode(node: unknown, out: string[]): void {

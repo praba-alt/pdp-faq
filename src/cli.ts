@@ -29,6 +29,10 @@ async function main() {
       describe:
         "Use OpenAI to generate FAQ content (requires OPENAI_API_KEY). Falls back to rule-based generator on error.",
     })
+    .option("style", {
+      type: "string",
+      describe: "FAQ tone: formal, casual, or genz (AI mode only)",
+    })
     .help()
     .parse();
 
@@ -42,6 +46,10 @@ async function main() {
         /^https?:\/\//i.test(u)
     );
   const useAI = Boolean(argv.ai);
+  const style =
+    typeof argv.style === "string" && argv.style.trim().length > 0
+      ? argv.style.trim()
+      : undefined;
 
   // eslint-disable-next-line no-console
   console.log(`Loaded ${urls.length} URL(s) from ${argv.input}`);
@@ -60,19 +68,27 @@ async function main() {
         ((item as any).specs as Record<string, string> | undefined) ?? {};
       const baseProduct = {
         url,
-        title: parsed.title || (item as any).title || "",
-        description: parsed.description || (item as any).description,
+        title: parsed.title || parsed.jsonTitle || (item as any).title || "",
+        description:
+          parsed.description ||
+          parsed.jsonDescription ||
+          parsed.jsonContent ||
+          (item as any).description,
         metaDescription: parsed.metaDescription ?? (item as any).metaDescription,
         specs: {
           ...(parsed.specs ?? {}),
           ...feedSpecs,
         },
         sku: item.sku ?? (parsed as any).sku ?? (item as any).sku,
+        jsonId: parsed.jsonId,
+        jsonTitle: parsed.jsonTitle,
+        jsonDescription: parsed.jsonDescription,
+        jsonContent: parsed.jsonContent,
       };
 
       if (useAI && process.env.OPENAI_API_KEY) {
         try {
-          const faqs = await generateFaqsWithAI(baseProduct);
+          const faqs = await generateFaqsWithAI(baseProduct, { style });
           // eslint-disable-next-line no-console
           console.log(
             `Success (AI): ${url} — ${faqs.length} FAQ(s) generated`

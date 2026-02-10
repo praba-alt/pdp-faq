@@ -512,6 +512,27 @@
             "
           >
             <div>
+              <label for="style-select">FAQ style</label>
+              <select
+                id="style-select"
+                style="
+                  width: 100%;
+                  margin-top: 0.35rem;
+                  border-radius: 999px;
+                  border: 1px solid var(--border-subtle);
+                  padding: 0.45rem 0.7rem;
+                  background: #020617;
+                  color: var(--text-primary);
+                  font-size: 0.8rem;
+                "
+              >
+                <option value="formal" selected>Formal</option>
+                <option value="casual">Casual</option>
+                <option value="genz">Gen Z</option>
+              </select>
+            </div>
+
+            <div>
               <label for="range-start">Optional item range</label>
               <div
                 style="
@@ -629,6 +650,7 @@
       const apiUrlInput = document.getElementById("api-url-input");
       const rangeStartInput = document.getElementById("range-start");
       const rangeEndInput = document.getElementById("range-end");
+      const styleSelect = document.getElementById("style-select");
       const tabButtons = Array.from(
         document.querySelectorAll(".tab-toggle")
       );
@@ -863,6 +885,10 @@
           const rangeEnd = rangeEndInput
             ? parseInt(rangeEndInput.value, 10) || null
             : null;
+          const style =
+            styleSelect && styleSelect.value
+              ? styleSelect.value
+              : "formal";
 
           let res;
 
@@ -879,6 +905,7 @@
               urls: mode === "urls" ? urls : undefined,
               apiUrl: mode === "api" ? apiUrl : undefined,
               ai: true,
+              style,
               rangeStart: rangeStart ?? undefined,
               rangeEnd: rangeEnd ?? undefined,
             };
@@ -896,6 +923,7 @@
               formData.append("file", fileInput.files[0]);
             }
             const params = new URLSearchParams({ ai: "1" });
+            if (style) params.set("style", style);
             if (rangeStart) params.set("start", String(rangeStart));
             if (rangeEnd) params.set("end", String(rangeEnd));
 

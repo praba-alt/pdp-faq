@@ -8,6 +8,10 @@ export interface AiFaqInput {
   description?: string;
   metaDescription?: string;
   specs: Record<string, string>;
+  jsonId?: string;
+  jsonTitle?: string;
+  jsonDescription?: string;
+  jsonContent?: string;
 }
 
 const MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
@@ -24,10 +28,18 @@ function getClient(): OpenAI {
   return openai;
 }
 
-export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> {
+export async function generateFaqsWithAI(
+  input: AiFaqInput,
+  options?: { style?: string }
+): Promise<FaqItem[]> {
   const client = getClient();
 
   const specsText = JSON.stringify(input.specs ?? {}, null, 2);
+  const style = normaliseStyle(options?.style);
+  const styleInstruction = buildStyleInstruction(style);
+  const jsonTitle = truncate(input.jsonTitle, 600);
+  const jsonDescription = truncate(input.jsonDescription, 1500);
+  const jsonContent = truncate(input.jsonContent, 2200);
 
   const messages = [
     {
@@ -36,7 +48,8 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
         "You write concise, shopper-focused FAQs for ecommerce product pages. " +
         "Only use the provided description and specifications. Do not invent technical details. " +
         "Never mention or infer price, cost, discounts, promotions, special offers, or stock/availability status. " +
-        "Always respond with pure JSON in the requested format, no extra text.",
+        "Always respond with pure JSON in the requested format, no extra text. " +
+        styleInstruction,
     },
     {
       role: "user" as const,
@@ -45,6 +58,14 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
         `Title: ${input.title}\n` +
         (input.sku ? `SKU: ${input.sku}\n` : "") +
         `URL: ${input.url}\n\n` +
+        (input.jsonId
+          ? `JSON source ID: ${input.jsonId}\n`
+          : "") +
+        (jsonTitle ? `JSON title:\n${jsonTitle}\n\n` : "") +
+        (jsonDescription
+          ? `JSON description:\n${jsonDescription}\n\n`
+          : "") +
+        (jsonContent ? `JSON content:\n${jsonContent}\n\n` : "") +
         (input.metaDescription
           ? `Meta description:\n${input.metaDescription}\n\n`
           : "") +
@@ -151,4 +172,36 @@ export async function generateFaqsWithAI(input: AiFaqInput): Promise<FaqItem[]> 
   }
 
   return faqs;
+}
+
+function normaliseStyle(style?: string): string {
+  if (!style) return "formal";
+  const key = style.toLowerCase().replace(/[^a-z]/g, "");
+  if (key === "casual") return "casual";
+  if (key === "genz" || key === "genzstyle" || key === "genzvibe") return "genz";
+  return "formal";
+}
+
+function buildStyleInstruction(style: string): string {
+  if (style === "casual") {
+    return (
+      "Write in a friendly, casual tone with simple, conversational phrasing. " +
+      "Avoid slang overload and keep answers concise."
+    );
+  }
+  if (style === "genz") {
+    return (
+      "Write in a light Gen Z tone: short, energetic sentences with minimal, tasteful slang. " +
+      "Avoid emojis and avoid sounding forced."
+    );
+  }
+  return (
+    "Write in a professional, formal tone with clear, polished phrasing."
+  );
+}
+
+function truncate(value: string | undefined, max: number): string | undefined {
+  if (!value) return undefined;
+  if (value.length <= max) return value;
+  return value.slice(0, max).trim() + "...";
 }
