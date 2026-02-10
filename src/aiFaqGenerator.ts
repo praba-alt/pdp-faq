@@ -48,7 +48,7 @@ export async function generateFaqsWithAI(
         "You write concise, shopper-focused FAQs for ecommerce product pages. " +
         "Only use the provided description and specifications. Do not invent technical details. " +
         "Never mention or infer price, cost, discounts, promotions, special offers, or stock/availability status. " +
-        "Always respond with pure JSON in the requested format, no extra text. " +
+        "Always respond with pure JSON in the requested format, no extra text. " + "also use UK english for content"+
         styleInstruction,
     },
     {
