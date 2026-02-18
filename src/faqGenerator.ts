@@ -26,7 +26,7 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
 
   if (description && description.trim().length > 0) {
     faqs.push({
-      question: `What is ${safeTitle} and who is it for?`,
+      question: `What is ${safeTitle} and how does it help?`,
       answer: description.trim(),
     });
   }
@@ -69,14 +69,6 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
     });
   }
 
-  const noise = findSpec(specs, ["noise level", "sound level"]);
-  if (noise) {
-    faqs.push({
-      question: `How loud is ${safeTitle} in operation?`,
-      answer: `${safeTitle} has a noise level of ${noise} during use.`,
-    });
-  }
-
   const warranty = findSpec(specs, ["warranty", "guarantee"]);
   if (warranty) {
     faqs.push({
@@ -85,7 +77,15 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
     });
   }
 
-  return { url, title: safeTitle, faqs };
+  const negativeImpressionRegex =
+    /(cons|downside|downsides|drawback|drawbacks|disadvantage|disadvantages|problem|problems|issue|issues|complaint|complaints|negative|defect|defects|limitation|limitations|risk|risks|loud|noise)/i;
+  const filteredFaqs = faqs.filter(
+    (faq) =>
+      !negativeImpressionRegex.test(faq.question) &&
+      !negativeImpressionRegex.test(faq.answer)
+  );
+
+  return { url, title: safeTitle, faqs: filteredFaqs };
 }
 
 function findSpec(specs: Record<string, string>, candidates: string[]): string | undefined {
