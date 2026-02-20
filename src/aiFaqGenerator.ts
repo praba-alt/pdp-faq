@@ -80,6 +80,7 @@ export async function generateFaqsWithAI(
         `- Do not include FAQs about price, cost, discounts, promotions, or whether the product is in stock or available.\n` +
         `- Avoid negative or downside-focused FAQs (cons, drawbacks, disadvantages, problems, complaints, issues, defects, limitations, risks). Do not add FAQs that could be seen as leaking unwanted information.\n` +
         `- Do not include generic questions like "Is this energy efficient?" unless the product information explicitly and clearly states energy efficiency details.\n` +
+        `- If you mention warranty/guarantee, use retail-friendly wording like "Manufacturer's guarantee ... Proof of purchase may be required."\n` +
         `- Answers must be grounded only in the description/specs.\n` +
         `- If something (especially a feature, specification or technical detail) is not clearly stated, do not claim it as fact and avoid creating a FAQ whose main point is that the information is missing.\n` +
         `- Aim for up to 10 FAQs; if there is not enough product information, it's fine to return fewer.`,
@@ -125,8 +126,8 @@ export async function generateFaqsWithAI(
 
   let faqs: FaqItem[] = (raw as any[])
     .map((item) => ({
-      question: String(item.question ?? "").trim(),
-      answer: String(item.answer ?? "").trim(),
+      question: fixMojibake(String(item.question ?? "").trim()),
+      answer: fixMojibake(String(item.answer ?? "").trim()),
     }))
     .filter((qa) => qa.question && qa.answer);
 
@@ -219,4 +220,17 @@ function truncate(value: string | undefined, max: number): string | undefined {
   if (!value) return undefined;
   if (value.length <= max) return value;
   return value.slice(0, max).trim() + "...";
+}
+
+function fixMojibake(value: string): string {
+  return value
+    .replace(/Â/g, "")
+    .replace(/â€™/g, "’")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€œ/g, "“")
+    .replace(/â€�/g, "”")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/â€¢/g, "•")
+    .replace(/â€¦/g, "…");
 }

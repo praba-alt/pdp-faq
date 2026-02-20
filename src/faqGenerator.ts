@@ -73,7 +73,7 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
   if (warranty) {
     faqs.push({
       question: `What warranty comes with ${safeTitle}?`,
-      answer: `${safeTitle} includes a warranty of ${warranty}.`,
+      answer: `${safeTitle} comes with a manufacturer's guarantee of ${warranty}. Proof of purchase may be required.`,
     });
   }
 
@@ -85,7 +85,12 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
       !negativeImpressionRegex.test(faq.answer)
   );
 
-  return { url, title: safeTitle, faqs: filteredFaqs };
+  const cleanedFaqs = filteredFaqs.map((faq) => ({
+    question: fixMojibake(faq.question),
+    answer: fixMojibake(faq.answer),
+  }));
+
+  return { url, title: safeTitle, faqs: cleanedFaqs };
 }
 
 function findSpec(specs: Record<string, string>, candidates: string[]): string | undefined {
@@ -105,4 +110,17 @@ function findSpec(specs: Record<string, string>, candidates: string[]): string |
 
 function normaliseKey(key: string): string {
   return key.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function fixMojibake(value: string): string {
+  return value
+    .replace(/Â/g, "")
+    .replace(/â€™/g, "’")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€œ/g, "“")
+    .replace(/â€�/g, "”")
+    .replace(/â€“/g, "–")
+    .replace(/â€”/g, "—")
+    .replace(/â€¢/g, "•")
+    .replace(/â€¦/g, "…");
 }
