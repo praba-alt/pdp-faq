@@ -30,13 +30,14 @@ function getClient(): OpenAI {
 
 export async function generateFaqsWithAI(
   input: AiFaqInput,
-  options?: { style?: string }
+  options?: { style?: string; allowDeliveryFaqs?: boolean }
 ): Promise<FaqItem[]> {
   const client = getClient();
 
   const specsText = JSON.stringify(input.specs ?? {}, null, 2);
   const style = normaliseStyle(options?.style);
   const styleInstruction = buildStyleInstruction(style);
+  const allowDeliveryFaqs = options?.allowDeliveryFaqs !== false;
   const jsonTitle = truncate(input.jsonTitle, 600);
   const jsonDescription = truncate(input.jsonDescription, 1500);
   const jsonContent = truncate(input.jsonContent, 2200);
@@ -76,7 +77,9 @@ export async function generateFaqsWithAI(
         `- Questions should be specific and helpful.\n` +
         `- Focus primarily on product features and specifications (size, dimensions, materials, capacity, performance, connectivity, compatibility, care instructions, usage scenarios, etc.) based on the product type.\n` +
         `- Prioritise high-value FAQs that help new and frequent visitors quickly understand the product and clear common doubts. Keep a positive, reassuring tone.\n` +
-        `- You may include at most 2 FAQs in total about delivery, shipping, returns, refunds, or exchanges; all other FAQs should be about the product itself.\n` +
+        (allowDeliveryFaqs
+          ? `- You may include at most 2 FAQs in total about delivery, shipping, returns, refunds, or exchanges; all other FAQs should be about the product itself.\n`
+          : `- Do not include any FAQs about delivery, shipping, returns, refunds, or exchanges.\n`) +
         `- Do not include FAQs about price, cost, discounts, promotions, or whether the product is in stock or available.\n` +
         `- Avoid negative or downside-focused FAQs (cons, drawbacks, disadvantages, problems, complaints, issues, defects, limitations, risks). Do not add FAQs that could be seen as leaking unwanted information.\n` +
         `- Do not include generic questions like "Is this energy efficient?" unless the product information explicitly and clearly states energy efficiency details.\n` +
@@ -161,7 +164,7 @@ export async function generateFaqsWithAI(
       !energyEfficiencyRegex.test(faq.answer)
   );
 
-  // Separate delivery/returns questions and cap them to 2
+  // Separate delivery/returns questions and cap them to 2 (or exclude them entirely)
   const deliveryRegex =
     /(delivery|shipping|returns?|refunds?|exchanges?|return policy|shipping policy|tariffs?|dut(y|ies)|tax(es)?|customs)/i;
   const deliveryFaqs: FaqItem[] = [];
@@ -175,8 +178,12 @@ export async function generateFaqsWithAI(
     }
   }
 
-  const limitedDeliveryFaqs = deliveryFaqs.slice(0, 2);
-  faqs = [...otherFaqs, ...limitedDeliveryFaqs];
+  if (allowDeliveryFaqs) {
+    const limitedDeliveryFaqs = deliveryFaqs.slice(0, 2);
+    faqs = [...otherFaqs, ...limitedDeliveryFaqs];
+  } else {
+    faqs = otherFaqs;
+  }
 
   // Enforce a maximum of 10 FAQs
   if (faqs.length > 10) {

@@ -33,6 +33,11 @@ async function main() {
       type: "string",
       describe: "FAQ tone: formal, casual, or genz (AI mode only)",
     })
+    .option("no-delivery-faqs", {
+      type: "boolean",
+      default: false,
+      describe: "Exclude delivery/shipping/returns FAQs (AI mode only)",
+    })
     .help()
     .parse();
 
@@ -50,11 +55,14 @@ async function main() {
     typeof argv.style === "string" && argv.style.trim().length > 0
       ? argv.style.trim()
       : undefined;
+  const noDeliveryFaqs = Boolean((argv as any)["no-delivery-faqs"]);
 
   // eslint-disable-next-line no-console
   console.log(`Loaded ${urls.length} URL(s) from ${argv.input}`);
 
   const results = [];
+  const inferredNoDeliveryFaqs =
+    noDeliveryFaqs || inferNoDeliveryFaqsFromItems(items);
   for (const item of items) {
     const url = item.url;
     try {
@@ -88,7 +96,10 @@ async function main() {
 
       if (useAI && process.env.OPENAI_API_KEY) {
         try {
-          const faqs = await generateFaqsWithAI(baseProduct, { style });
+          const faqs = await generateFaqsWithAI(baseProduct, {
+            style,
+            allowDeliveryFaqs: !inferredNoDeliveryFaqs,
+          });
           // eslint-disable-next-line no-console
           console.log(
             `Success (AI): ${url} — ${faqs.length} FAQ(s) generated`
@@ -160,3 +171,15 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+
+function inferNoDeliveryFaqsFromItems(
+  items: Array<{ url?: string; title?: string }>
+): boolean {
+  return items.some((item) => {
+    const url = String(item.url ?? "").toLowerCase();
+    const title = String(item.title ?? "").toLowerCase();
+    return (
+      url.includes("childsplayclothing.com") || title.includes("childsplay")
+    );
+  });
+}

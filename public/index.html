@@ -575,6 +575,32 @@
                 />
                 <span>(e.g. 1–50 or 51–100)</span>
               </div>
+              <div
+                style="
+                  display: flex;
+                  align-items: center;
+                  gap: 0.4rem;
+                  margin-top: 0.45rem;
+                  font-size: 0.8rem;
+                "
+              >
+                <span>Batch size</span>
+                <input
+                  id="batch-size"
+                  type="number"
+                  min="1"
+                  placeholder="100"
+                  style="
+                    width: 4.5rem;
+                    border-radius: 999px;
+                    border: 1px solid var(--border-subtle);
+                    padding: 0.25rem 0.5rem;
+                    background: #020617;
+                    color: var(--text-primary);
+                  "
+                />
+                <span>(leave blank to run in one go)</span>
+              </div>
             </div>
 
             <div
@@ -650,6 +676,7 @@
       const apiUrlInput = document.getElementById("api-url-input");
       const rangeStartInput = document.getElementById("range-start");
       const rangeEndInput = document.getElementById("range-end");
+      const batchSizeInput = document.getElementById("batch-size");
       const styleSelect = document.getElementById("style-select");
       const tabButtons = Array.from(
         document.querySelectorAll(".tab-toggle")
@@ -832,6 +859,31 @@
         });
       });
 
+      function parsePositiveInt(value) {
+        const parsed = parseInt(value, 10);
+        if (Number.isNaN(parsed) || parsed <= 0) return null;
+        return parsed;
+      }
+
+      function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+      }
+
+      async function fetchWithRetry(url, options, retries = 1) {
+        let lastErr;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          try {
+            return await fetch(url, options);
+          } catch (err) {
+            lastErr = err;
+            if (attempt < retries) {
+              await sleep(750 * (attempt + 1));
+            }
+          }
+        }
+        throw lastErr;
+      }
+
       async function handleProcess(mode) {
         const urlsText = urlsInput ? urlsInput.value.trim() : "";
         const apiUrl = apiUrlInput ? apiUrlInput.value.trim() : "";
@@ -880,10 +932,13 @@
 
         try {
           const rangeStart = rangeStartInput
-            ? parseInt(rangeStartInput.value, 10) || null
+            ? parsePositiveInt(rangeStartInput.value)
             : null;
-          const rangeEnd = rangeEndInput
-            ? parseInt(rangeEndInput.value, 10) || null
+          const rangeEndRaw = rangeEndInput
+            ? parsePositiveInt(rangeEndInput.value)
+            : null;
+          const batchSize = batchSizeInput
+            ? parsePositiveInt(batchSizeInput.value)
             : null;
           const style =
             styleSelect && styleSelect.value
@@ -891,26 +946,138 @@
               : "formal";
 
           let res;
+          let urls = [];
+          let effectiveRangeEnd = rangeEndRaw;
 
           if (mode === "urls" || mode === "api") {
-            const urls =
+            urls =
               mode === "urls" && urlsText
                 ? urlsText
                     .split(/\r?\n/)
                     .map((l) => l.trim())
                     .filter((l) => l.length > 0)
                 : [];
+            if (mode === "urls" && urls.length > 0 && !effectiveRangeEnd) {
+              effectiveRangeEnd = urls.length;
+            }
+          }
 
+          if (batchSize && !effectiveRangeEnd) {
+            statusEl.textContent =
+              "Batch size needs an end range. Set 'to' or leave batch size blank.";
+            statusEl.classList.add("error");
+            return;
+          }
+
+          if (batchSize && effectiveRangeEnd) {
+            const startBase = rangeStart ?? 1;
+            const endBase = effectiveRangeEnd;
+            const totalBatches = Math.ceil(
+              (endBase - startBase + 1) / batchSize
+            );
+            const allResults = [];
+            let batchIndex = 0;
+
+            for (let start = startBase; start <= endBase; start += batchSize) {
+              const end = Math.min(endBase, start + batchSize - 1);
+              batchIndex += 1;
+              statusEl.textContent = `Processing batch ${batchIndex}/${totalBatches} (${start}-${end})...`;
+              statusEl.classList.remove("error");
+
+              if (mode === "urls" || mode === "api") {
+                const body = {
+                  urls: mode === "urls" ? urls : undefined,
+                  apiUrl: mode === "api" ? apiUrl : undefined,
+                  ai: true,
+                  style,
+                  rangeStart: start,
+                  rangeEnd: end,
+                };
+
+                res = await fetchWithRetry("/api/process-urls", {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify(body),
+                });
+              } else {
+                const formData = new FormData();
+                if (fileInput.files && fileInput.files[0]) {
+                  formData.append("file", fileInput.files[0]);
+                }
+                const params = new URLSearchParams({ ai: "1" });
+                if (style) params.set("style", style);
+                params.set("start", String(start));
+                params.set("end", String(end));
+
+                res = await fetchWithRetry(
+                  `/api/upload-urls?${params.toString()}`,
+                  {
+                    method: "POST",
+                    body: formData,
+                  }
+                );
+              }
+
+              if (!res.ok) {
+                const text = await res.text();
+                throw new Error(text || res.statusText);
+              }
+              const batchData = await res.json();
+              if (Array.isArray(batchData)) {
+                allResults.push(...batchData);
+              }
+            }
+
+            lastJson = JSON.stringify(allResults, null, 2);
+            resultsCodeEl.textContent = lastJson;
+            if (window.hljs) {
+              window.hljs.highlightElement(resultsCodeEl);
+            }
+
+            if (Array.isArray(allResults)) {
+              const successCount = allResults.filter(
+                (item) => item && item.faqs && item.faqs.length
+              ).length;
+              resultSummary.textContent = `${successCount}/${allResults.length} products`;
+
+              let fileName = "";
+              if (mode === "file") {
+                fileName =
+                  fileInput.files && fileInput.files[0]
+                    ? fileInput.files[0].name
+                    : "";
+              } else if (mode === "urls") {
+                fileName = "Pasted URLs";
+              } else if (mode === "api") {
+                fileName = apiUrl || "API URL";
+              }
+
+              addHistoryEntry({
+                fileName,
+                json: lastJson,
+                total: allResults.length,
+                success: successCount,
+              });
+            }
+
+            statusEl.textContent = "Done.";
+            actionsEl.style.display = "block";
+            return;
+          }
+
+          if (mode === "urls" || mode === "api") {
             const body = {
               urls: mode === "urls" ? urls : undefined,
               apiUrl: mode === "api" ? apiUrl : undefined,
               ai: true,
               style,
               rangeStart: rangeStart ?? undefined,
-              rangeEnd: rangeEnd ?? undefined,
+              rangeEnd: effectiveRangeEnd ?? undefined,
             };
 
-            res = await fetch("/api/process-urls", {
+            res = await fetchWithRetry("/api/process-urls", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -925,9 +1092,9 @@
             const params = new URLSearchParams({ ai: "1" });
             if (style) params.set("style", style);
             if (rangeStart) params.set("start", String(rangeStart));
-            if (rangeEnd) params.set("end", String(rangeEnd));
+            if (effectiveRangeEnd) params.set("end", String(effectiveRangeEnd));
 
-            res = await fetch(`/api/upload-urls?${params.toString()}`, {
+            res = await fetchWithRetry(`/api/upload-urls?${params.toString()}`, {
               method: "POST",
               body: formData,
             });

@@ -29,6 +29,24 @@ function parseStyle(value: unknown): string | undefined {
   return undefined;
 }
 
+function parseNoDeliveryFaqs(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  const s = String(value ?? "").toLowerCase();
+  return s === "1" || s === "true" || s === "yes";
+}
+
+function inferNoDeliveryFaqsFromItems(
+  items: Array<{ url?: string; title?: string }>
+): boolean {
+  return items.some((item) => {
+    const url = String(item.url ?? "").toLowerCase();
+    const title = String(item.title ?? "").toLowerCase();
+    return (
+      url.includes("childsplayclothing.com") || title.includes("childsplay")
+    );
+  });
+}
+
 function applyRange(
   items: InputItem[],
   startRaw: unknown,
@@ -58,7 +76,8 @@ function applyRange(
 async function processItems(
   items: InputItem[],
   useAI: boolean,
-  style?: string
+  style?: string,
+  noDeliveryFaqs?: boolean
 ): Promise<
   {
     sku: string;
@@ -107,7 +126,10 @@ async function processItems(
 
       if (useAI && process.env.OPENAI_API_KEY) {
         try {
-          const faqs = await generateFaqsWithAI(baseProduct, { style });
+          const faqs = await generateFaqsWithAI(baseProduct, {
+            style,
+            allowDeliveryFaqs: !noDeliveryFaqs,
+          });
           results.push({
             sku: baseProduct.sku ?? "",
             url,
@@ -173,7 +195,10 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
     const filePath = req.file.path;
     const useAI = parseUseAI(req.query.ai);
     const style = parseStyle(req.query.style);
+    const noDeliveryFaqs = parseNoDeliveryFaqs(req.query.noDeliveryFaqs);
     const allItems = loadInputItems(filePath);
+    const inferredNoDeliveryFaqs =
+      noDeliveryFaqs || inferNoDeliveryFaqsFromItems(allItems);
     const { items, startIndex, endIndex } = applyRange(
       allItems,
       req.query.start,
@@ -196,7 +221,12 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
           : "")
     );
 
-    const results = await processItems(items, useAI, style);
+    const results = await processItems(
+      items,
+      useAI,
+      style,
+      inferredNoDeliveryFaqs
+    );
 
     fs.unlink(filePath, () => {});
     return res.json(results);
@@ -211,6 +241,9 @@ app.post("/api/process-urls", async (req, res) => {
     const useAI =
       "ai" in body ? parseUseAI(body.ai) : parseUseAI(req.query.ai);
     const style = parseStyle(body.style ?? req.query.style);
+    const noDeliveryFaqs = parseNoDeliveryFaqs(
+      body.noDeliveryFaqs ?? req.query.noDeliveryFaqs
+    );
 
     const directUrlsRaw = Array.isArray(body.urls) ? body.urls : [];
     const apiUrl =
@@ -254,6 +287,8 @@ app.post("/api/process-urls", async (req, res) => {
       body.rangeStart ?? body.start,
       body.rangeEnd ?? body.end
     );
+    const inferredNoDeliveryFaqs =
+      noDeliveryFaqs || inferNoDeliveryFaqsFromItems(items);
 
     if (!rangedItems.length) {
       return res.json([]);
@@ -267,7 +302,12 @@ app.post("/api/process-urls", async (req, res) => {
           : "")
     );
 
-    const results = await processItems(rangedItems, useAI, style);
+    const results = await processItems(
+      rangedItems,
+      useAI,
+      style,
+      inferredNoDeliveryFaqs
+    );
     return res.json(results);
   } catch (err: any) {
     return res.status(500).json({ error: err?.message ?? String(err) });
