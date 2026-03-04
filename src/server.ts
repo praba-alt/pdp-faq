@@ -29,6 +29,11 @@ function parseStyle(value: unknown): string | undefined {
   return undefined;
 }
 
+function parseLanguage(value: unknown): string | undefined {
+  if (typeof value === "string") return value.trim();
+  return undefined;
+}
+
 function parseNoDeliveryFaqs(value: unknown): boolean {
   if (typeof value === "boolean") return value;
   const s = String(value ?? "").toLowerCase();
@@ -77,6 +82,7 @@ async function processItems(
   items: InputItem[],
   useAI: boolean,
   style?: string,
+  language?: string,
   noDeliveryFaqs?: boolean
 ): Promise<
   {
@@ -128,6 +134,7 @@ async function processItems(
         try {
           const faqs = await generateFaqsWithAI(baseProduct, {
             style,
+            language,
             allowDeliveryFaqs: !noDeliveryFaqs,
           });
           results.push({
@@ -195,6 +202,7 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
     const filePath = req.file.path;
     const useAI = parseUseAI(req.query.ai);
     const style = parseStyle(req.query.style);
+    const language = parseLanguage(req.query.language);
     const noDeliveryFaqs = parseNoDeliveryFaqs(req.query.noDeliveryFaqs);
     const allItems = loadInputItems(filePath);
     const inferredNoDeliveryFaqs =
@@ -225,6 +233,7 @@ app.post("/api/upload-urls", upload.single("file"), async (req, res) => {
       items,
       useAI,
       style,
+      language,
       inferredNoDeliveryFaqs
     );
 
@@ -241,6 +250,7 @@ app.post("/api/process-urls", async (req, res) => {
     const useAI =
       "ai" in body ? parseUseAI(body.ai) : parseUseAI(req.query.ai);
     const style = parseStyle(body.style ?? req.query.style);
+    const language = parseLanguage(body.language ?? req.query.language);
     const noDeliveryFaqs = parseNoDeliveryFaqs(
       body.noDeliveryFaqs ?? req.query.noDeliveryFaqs
     );
@@ -306,6 +316,7 @@ app.post("/api/process-urls", async (req, res) => {
       rangedItems,
       useAI,
       style,
+      language,
       inferredNoDeliveryFaqs
     );
     return res.json(results);

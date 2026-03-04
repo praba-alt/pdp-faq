@@ -30,13 +30,15 @@ function getClient(): OpenAI {
 
 export async function generateFaqsWithAI(
   input: AiFaqInput,
-  options?: { style?: string; allowDeliveryFaqs?: boolean }
+  options?: { style?: string; language?: string; allowDeliveryFaqs?: boolean }
 ): Promise<FaqItem[]> {
   const client = getClient();
 
   const specsText = JSON.stringify(input.specs ?? {}, null, 2);
   const style = normaliseStyle(options?.style);
   const styleInstruction = buildStyleInstruction(style);
+  const language = normaliseLanguage(options?.language);
+  const languageInstruction = buildLanguageInstruction(language);
   const allowDeliveryFaqs = options?.allowDeliveryFaqs !== false;
   const jsonTitle = truncate(input.jsonTitle, 600);
   const jsonDescription = truncate(input.jsonDescription, 1500);
@@ -49,7 +51,8 @@ export async function generateFaqsWithAI(
         "You write concise, shopper-focused FAQs for ecommerce product pages. " +
         "Only use the provided description and specifications. Do not invent technical details. " +
         "Never mention or infer price, cost, discounts, promotions, special offers, or stock/availability status. " +
-        "Always respond with pure JSON in the requested format, no extra text. " + "also use UK english for content"+
+        "Always respond with pure JSON in the requested format, no extra text. " +
+        languageInstruction +
         styleInstruction,
     },
     {
@@ -220,6 +223,29 @@ function buildStyleInstruction(style: string): string {
   }
   return (
     "Write in a professional, formal tone with clear, polished phrasing."
+  );
+}
+
+function normaliseLanguage(language?: string): "en-GB" | "en-US" {
+  if (!language) return "en-GB";
+  const key = language.toLowerCase().replace(/[^a-z]/g, "");
+  if (key === "enus" || key === "us" || key === "americanenglish") {
+    return "en-US";
+  }
+  if (key === "engb" || key === "uk" || key === "britishenglish") {
+    return "en-GB";
+  }
+  return "en-GB";
+}
+
+function buildLanguageInstruction(language: "en-GB" | "en-US"): string {
+  if (language === "en-US") {
+    return (
+      "Use US English spelling and vocabulary throughout (for example: color, organize, shipping). "
+    );
+  }
+  return (
+    "Use UK English spelling and vocabulary throughout (for example: colour, organise, delivery). "
   );
 }
 

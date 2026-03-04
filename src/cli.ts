@@ -33,6 +33,11 @@ async function main() {
       type: "string",
       describe: "FAQ tone: formal, casual, or genz (AI mode only)",
     })
+    .option("language", {
+      type: "string",
+      describe:
+        "FAQ language variant: en-GB (UK English) or en-US (US English) (AI mode only)",
+    })
     .option("no-delivery-faqs", {
       type: "boolean",
       default: false,
@@ -56,6 +61,11 @@ async function main() {
       ? argv.style.trim()
       : undefined;
   const noDeliveryFaqs = Boolean((argv as any)["no-delivery-faqs"]);
+  const language =
+    typeof (argv as any).language === "string" &&
+    (argv as any).language.trim().length > 0
+      ? (argv as any).language.trim()
+      : undefined;
 
   // eslint-disable-next-line no-console
   console.log(`Loaded ${urls.length} URL(s) from ${argv.input}`);
@@ -98,6 +108,7 @@ async function main() {
         try {
           const faqs = await generateFaqsWithAI(baseProduct, {
             style,
+            language,
             allowDeliveryFaqs: !inferredNoDeliveryFaqs,
           });
           // eslint-disable-next-line no-console

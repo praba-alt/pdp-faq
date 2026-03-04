@@ -533,6 +533,26 @@
             </div>
 
             <div>
+              <label for="language-select">FAQ language</label>
+              <select
+                id="language-select"
+                style="
+                  width: 100%;
+                  margin-top: 0.35rem;
+                  border-radius: 999px;
+                  border: 1px solid var(--border-subtle);
+                  padding: 0.45rem 0.7rem;
+                  background: #020617;
+                  color: var(--text-primary);
+                  font-size: 0.8rem;
+                "
+              >
+                <option value="en-GB" selected>UK English (British)</option>
+                <option value="en-US">US English (American)</option>
+              </select>
+            </div>
+
+            <div>
               <label for="range-start">Optional item range</label>
               <div
                 style="
@@ -678,6 +698,7 @@
       const rangeEndInput = document.getElementById("range-end");
       const batchSizeInput = document.getElementById("batch-size");
       const styleSelect = document.getElementById("style-select");
+      const languageSelect = document.getElementById("language-select");
       const tabButtons = Array.from(
         document.querySelectorAll(".tab-toggle")
       );
@@ -944,6 +965,10 @@
             styleSelect && styleSelect.value
               ? styleSelect.value
               : "formal";
+          const language =
+            languageSelect && languageSelect.value
+              ? languageSelect.value
+              : "en-GB";
 
           let res;
           let urls = [];
@@ -990,6 +1015,7 @@
                   apiUrl: mode === "api" ? apiUrl : undefined,
                   ai: true,
                   style,
+                  language,
                   rangeStart: start,
                   rangeEnd: end,
                 };
@@ -1008,6 +1034,7 @@
                 }
                 const params = new URLSearchParams({ ai: "1" });
                 if (style) params.set("style", style);
+                if (language) params.set("language", language);
                 params.set("start", String(start));
                 params.set("end", String(end));
 
@@ -1073,6 +1100,7 @@
               apiUrl: mode === "api" ? apiUrl : undefined,
               ai: true,
               style,
+              language,
               rangeStart: rangeStart ?? undefined,
               rangeEnd: effectiveRangeEnd ?? undefined,
             };
@@ -1091,6 +1119,7 @@
             }
             const params = new URLSearchParams({ ai: "1" });
             if (style) params.set("style", style);
+            if (language) params.set("language", language);
             if (rangeStart) params.set("start", String(rangeStart));
             if (effectiveRangeEnd) params.set("end", String(effectiveRangeEnd));
 
