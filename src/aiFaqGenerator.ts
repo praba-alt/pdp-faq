@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+﻿import OpenAI from "openai";
 import type { FaqItem } from "./faqGenerator.js";
 
 export interface AiFaqInput {
@@ -139,7 +139,7 @@ export async function generateFaqsWithAI(
 
   // Filter out FAQs whose sole purpose is to state that information is missing
   const missingInfoRegex =
-    /(not specified|not provided|not mentioned|does not (provide|specify|state)|no information (is|was) provided|isn['’]t listed)/i;
+    /(not specified|not provided|not mentioned|does not (provide|specify|state)|no information (is|was) provided|isn['â€™]t listed)/i;
   faqs = faqs.filter(
     (faq) =>
       !missingInfoRegex.test(faq.question) &&
@@ -257,13 +257,15 @@ function truncate(value: string | undefined, max: number): string | undefined {
 
 function fixMojibake(value: string): string {
   return value
+    .replace(/Ã‚/g, "")
+    .replace(/Ã¢â‚¬â„¢|â€™|’/g, "'")
+    .replace(/Ã¢â‚¬Ëœ|â€˜|‘/g, "'")
+    .replace(/Ã¢â‚¬Å“|â€œ|“/g, '"')
+    .replace(/Ã¢â‚¬ï¿½|â€|”/g, '"')
+    .replace(/Ã¢â‚¬â€œ|â€“|–/g, "-")
+    .replace(/Ã¢â‚¬â€|â€”|—/g, "-")
+    .replace(/Ã¢â‚¬Â¦|â€¦|…/g, "...")
     .replace(/Â/g, "")
-    .replace(/â€™/g, "’")
-    .replace(/â€˜/g, "‘")
-    .replace(/â€œ/g, "“")
-    .replace(/â€�/g, "”")
-    .replace(/â€“/g, "–")
-    .replace(/â€”/g, "—")
-    .replace(/â€¢/g, "•")
-    .replace(/â€¦/g, "…");
+    .replace(/\u00A0/g, " ");
 }
+

@@ -1,4 +1,4 @@
-export interface ProductData {
+﻿export interface ProductData {
   sku?: string;
   url: string;
   title: string;
@@ -114,13 +114,15 @@ function normaliseKey(key: string): string {
 
 function fixMojibake(value: string): string {
   return value
+    .replace(/Ã‚/g, "")
+    .replace(/Ã¢â‚¬â„¢|â€™|’/g, "'")
+    .replace(/Ã¢â‚¬Ëœ|â€˜|‘/g, "'")
+    .replace(/Ã¢â‚¬Å“|â€œ|“/g, '"')
+    .replace(/Ã¢â‚¬ï¿½|â€|”/g, '"')
+    .replace(/Ã¢â‚¬â€œ|â€“|–/g, "-")
+    .replace(/Ã¢â‚¬â€|â€”|—/g, "-")
+    .replace(/Ã¢â‚¬Â¦|â€¦|…/g, "...")
     .replace(/Â/g, "")
-    .replace(/â€™/g, "’")
-    .replace(/â€˜/g, "‘")
-    .replace(/â€œ/g, "“")
-    .replace(/â€�/g, "”")
-    .replace(/â€“/g, "–")
-    .replace(/â€”/g, "—")
-    .replace(/â€¢/g, "•")
-    .replace(/â€¦/g, "…");
+    .replace(/\u00A0/g, " ");
 }
+
