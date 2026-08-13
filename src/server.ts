@@ -92,6 +92,7 @@ async function processItems(
     category?: string;
     productType?: string;
     faqs: any[];
+    warning?: string;
     error?: string;
   }[]
 > {
@@ -102,38 +103,49 @@ async function processItems(
     category?: string;
     productType?: string;
     faqs: any[];
+    warning?: string;
     error?: string;
   }[] = [];
 
   for (const item of items) {
     const url = item.url;
     try {
-      // Always fetch the PDP HTML to get up-to-date specs.
-      // Feed-provided fields are only used as fallbacks/overrides.
       // eslint-disable-next-line no-console
       console.log(`Fetching: ${url}`);
-      const html = await fetchHtml(url);
-      const parsed = parseProductHtml(html);
+      let parsed: ReturnType<typeof parseProductHtml> | undefined;
+      let scrapeWarning: string | undefined;
+
+      try {
+        const html = await fetchHtml(url);
+        parsed = parseProductHtml(html);
+      } catch (scrapeErr: any) {
+        scrapeWarning = `PDP scrape failed; generated from feed data only: ${
+          scrapeErr?.message ?? String(scrapeErr)
+        }`;
+        // eslint-disable-next-line no-console
+        console.warn(`Warning: ${scrapeWarning}`);
+      }
+
       const baseProduct = {
-        sku: item.sku ?? parsed.sku,
+        sku: item.sku ?? parsed?.sku,
         url,
-        title: parsed.title || parsed.jsonTitle || item.title || "",
+        title: parsed?.title || parsed?.jsonTitle || item.title || "",
         category: item.category,
         productType: item.productType,
         description:
-          parsed.description ||
-          parsed.jsonDescription ||
-          parsed.jsonContent ||
+          parsed?.description ||
+          parsed?.jsonDescription ||
+          parsed?.jsonContent ||
           item.description,
-        metaDescription: parsed.metaDescription ?? item.metaDescription,
+        metaDescription: parsed?.metaDescription ?? item.metaDescription,
         specs: {
-          ...(parsed.specs ?? {}),
+          ...(parsed?.specs ?? {}),
           ...(item.specs ?? {}),
         },
-        jsonId: parsed.jsonId,
-        jsonTitle: parsed.jsonTitle,
-        jsonDescription: parsed.jsonDescription,
-        jsonContent: parsed.jsonContent,
+        jsonId: parsed?.jsonId,
+        jsonTitle: parsed?.jsonTitle,
+        jsonDescription: parsed?.jsonDescription,
+        jsonContent: parsed?.jsonContent,
       };
 
       if (useAI && process.env.OPENAI_API_KEY) {
@@ -150,6 +162,7 @@ async function processItems(
             category: baseProduct.category,
             productType: baseProduct.productType,
             faqs,
+            ...(scrapeWarning ? { warning: scrapeWarning } : null),
           });
           continue;
         } catch (aiErr: any) {
@@ -170,6 +183,7 @@ async function processItems(
             category: fallback.category,
             productType: fallback.productType,
             faqs: fallback.faqs,
+            ...(scrapeWarning ? { warning: scrapeWarning } : null),
             error: (fallback as any).error,
           });
           continue;
@@ -188,6 +202,7 @@ async function processItems(
         category: faq.category,
         productType: faq.productType,
         faqs: faq.faqs,
+        ...(scrapeWarning ? { warning: scrapeWarning } : null),
       });
     } catch (err: any) {
       // eslint-disable-next-line no-console

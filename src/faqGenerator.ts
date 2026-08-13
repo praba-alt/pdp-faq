@@ -82,7 +82,7 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
   }
 
   const negativeImpressionRegex =
-    /(cons|downside|downsides|drawback|drawbacks|disadvantage|disadvantages|problem|problems|issue|issues|complaint|complaints|negative|defect|defects|limitation|limitations|risk|risks|loud|noise)/i;
+    /\b(cons|downside|downsides|drawback|drawbacks|disadvantage|disadvantages|problem|problems|issue|issues|complaint|complaints|negative|defect|defects|limitation|limitations|risk|risks|loud|noise)\b/i;
   const filteredFaqs = faqs.filter(
     (faq) =>
       !negativeImpressionRegex.test(faq.question) &&

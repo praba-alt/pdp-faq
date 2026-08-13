@@ -161,7 +161,7 @@ export async function generateFaqsWithAI(
 
   // Filter out negative/cons-focused FAQs and generic energy-efficiency questions
   const negativeOrConsRegex =
-    /(cons|downside|downsides|drawback|drawbacks|disadvantage|disadvantages|problem|problems|issue|issues|complaint|complaints|negative|defect|defects|limitation|limitations|risk|risks)/i;
+    /\b(cons|downside|downsides|drawback|drawbacks|disadvantage|disadvantages|problem|problems|issue|issues|complaint|complaints|negative|defect|defects|limitation|limitations|risk|risks)\b/i;
   const energyEfficiencyRegex = /energy (efficient|efficiency)|energy[- ]?saving|power saving/i;
   faqs = faqs.filter(
     (faq) =>
