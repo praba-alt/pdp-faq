@@ -10,6 +10,8 @@ export interface InputItem {
   title?: string;
   description?: string;
   metaDescription?: string;
+  category?: string;
+  productType?: string;
   specs?: Record<string, string>;
 }
 
@@ -37,29 +39,67 @@ function parseTextToItems(content: string): InputItem[] {
 }
 
 function parseCsvToItems(content: string): InputItem[] {
-  const lines = content.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length === 0) return [];
-
-  const header = lines[0].split(",");
-  const normalisedHeader = header.map((h) => h.trim().toLowerCase());
-
-  const urlIndex = normalisedHeader.findIndex(
-    (h) => h === "url" || h === "link"
+  const rows = parseCsvRows(content).filter((row) =>
+    row.some((cell) => cell.trim().length > 0)
   );
-  const skuIndex = normalisedHeader.findIndex((h) => h === "sku");
-  const titleIndex = normalisedHeader.findIndex(
-    (h) => h === "title" || h === "name"
+  if (rows.length === 0) return [];
+
+  const header = rows[0];
+  const normalisedHeader = header.map(normaliseHeader);
+
+  const urlIndex = findHeaderIndex(normalisedHeader, [
+    "url",
+    "link",
+    "producturl",
+    "productlink",
+  ]);
+  const skuIndex = findHeaderIndex(normalisedHeader, [
+    "sku",
+    "id",
+    "productid",
+    "graphqlid",
+  ]);
+  const titleIndex = findHeaderIndex(normalisedHeader, [
+    "title",
+    "name",
+    "producttitle",
+    "productname",
+  ]);
+  const descriptionIndex = findHeaderIndex(normalisedHeader, [
+    "description",
+    "body",
+    "productdescription",
+  ]);
+  const categoryIndex = findHeaderIndex(normalisedHeader, [
+    "category",
+    "productcategory",
+    "googleproductcategory",
+  ]);
+  const productTypeIndex = findHeaderIndex(normalisedHeader, [
+    "producttype",
+    "type",
+    "productgroup",
+  ]);
+  const metaDescriptionIndex = findHeaderIndex(normalisedHeader, [
+    "metadescription",
+    "seodescription",
+    "metadesc",
+  ]);
+
+  const fallbackUrlIndex = normalisedHeader.findIndex((h) =>
+    h.includes("url")
   );
 
   const items: InputItem[] = [];
 
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split(",");
+  for (let i = 1; i < rows.length; i++) {
+    const cols = rows[i];
     const get = (idx: number): string | undefined =>
       idx >= 0 && idx < cols.length ? cols[idx].trim() : undefined;
 
     const rawUrl =
       get(urlIndex) ??
+      get(fallbackUrlIndex) ??
       get(0); // fallback to first column if no explicit url column
     if (!rawUrl) continue;
 
@@ -68,15 +108,81 @@ function parseCsvToItems(content: string): InputItem[] {
 
     const sku = get(skuIndex)?.replace(/^\uFEFF/, "").trim();
     const title = get(titleIndex)?.trim();
+    const description = get(descriptionIndex)?.trim();
+    const metaDescription = get(metaDescriptionIndex)?.trim();
+    const category = get(categoryIndex)?.trim();
+    const productType = get(productTypeIndex)?.trim();
 
     items.push({
       url,
       ...(sku ? { sku } : null),
       ...(title ? { title } : null),
+      ...(description ? { description } : null),
+      ...(metaDescription ? { metaDescription } : null),
+      ...(category ? { category } : null),
+      ...(productType ? { productType } : null),
     });
   }
 
   return items;
+}
+
+function parseCsvRows(content: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i];
+    const next = content[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        cell += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      row.push(cell);
+      cell = "";
+      continue;
+    }
+
+    if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(cell);
+      rows.push(row);
+      row = [];
+      cell = "";
+      continue;
+    }
+
+    cell += char;
+  }
+
+  if (cell.length || row.length) {
+    row.push(cell);
+    rows.push(row);
+  }
+
+  return rows;
+}
+
+function normaliseHeader(header: string): string {
+  return header
+    .replace(/^\uFEFF/, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+}
+
+function findHeaderIndex(headers: string[], candidates: string[]): number {
+  return headers.findIndex((header) => candidates.includes(header));
 }
 
 function parseJsonToItems(content: string): InputItem[] {
@@ -95,6 +201,20 @@ function parseJsonToItems(content: string): InputItem[] {
           ...(item.sku ? { sku: String(item.sku) } : null),
           ...(item.title || item.name
             ? { title: String(item.title ?? item.name) }
+            : null),
+          ...(item.description
+            ? { description: String(item.description) }
+            : null),
+          ...(item.metaDescription || item.meta_description
+            ? {
+                metaDescription: String(
+                  item.metaDescription ?? item.meta_description
+                ),
+              }
+            : null),
+          ...(item.category ? { category: String(item.category) } : null),
+          ...(item.productType || item.product_type
+            ? { productType: String(item.productType ?? item.product_type) }
             : null),
         }));
     }
@@ -115,6 +235,20 @@ function parseJsonToItems(content: string): InputItem[] {
           ...(item.title || item.name
             ? { title: String(item.title ?? item.name) }
             : null),
+          ...(item.description
+            ? { description: String(item.description) }
+            : null),
+          ...(item.metaDescription || item.meta_description
+            ? {
+                metaDescription: String(
+                  item.metaDescription ?? item.meta_description
+                ),
+              }
+            : null),
+          ...(item.category ? { category: String(item.category) } : null),
+          ...(item.productType || item.product_type
+            ? { productType: String(item.productType ?? item.product_type) }
+            : null),
         }));
     }
   }
@@ -130,6 +264,8 @@ function parseXmlToItems(content: string): InputItem[] {
     sku?: string;
     title?: string;
     description?: string;
+    category?: string;
+    productType?: string;
     specs?: Record<string, string>;
   }) => {
     if (!input.url) return;
@@ -138,6 +274,8 @@ function parseXmlToItems(content: string): InputItem[] {
     const sku = input.sku?.replace(/^\uFEFF/, "").trim();
     const title = input.title?.trim();
     const description = input.description?.trim();
+    const category = input.category?.trim();
+    const productType = input.productType?.trim();
     const specs = input.specs ?? {};
 
     items.push({
@@ -145,6 +283,8 @@ function parseXmlToItems(content: string): InputItem[] {
       ...(sku ? { sku } : null),
       ...(title ? { title } : null),
       ...(description ? { description } : null),
+      ...(category ? { category } : null),
+      ...(productType ? { productType } : null),
       ...(Object.keys(specs).length ? { specs } : null),
     });
   };
@@ -170,6 +310,14 @@ function parseXmlToItems(content: string): InputItem[] {
 
       let descriptionText: string | undefined =
         node.find("description, g\\:description").first().text().trim() ||
+        undefined;
+
+      let categoryText: string | undefined =
+        node.find("category, product_category, g\\:product_type").first().text().trim() ||
+        undefined;
+
+      let productTypeText: string | undefined =
+        node.find("product_type, productType, type, g\\:product_type").first().text().trim() ||
         undefined;
 
       const specs: Record<string, string> = {};
@@ -218,6 +366,12 @@ function parseXmlToItems(content: string): InputItem[] {
         "g:name",
         "description",
         "g:description",
+        "category",
+        "product_category",
+        "product_type",
+        "producttype",
+        "type",
+        "g:product_type",
       ]);
 
       node.find("*").each((__: number, child: any) => {
@@ -236,6 +390,8 @@ function parseXmlToItems(content: string): InputItem[] {
         sku: skuText,
         title: titleText,
         description: descriptionText,
+        category: categoryText,
+        productType: productTypeText,
         specs,
       });
     });

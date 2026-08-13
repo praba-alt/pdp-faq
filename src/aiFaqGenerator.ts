@@ -7,6 +7,8 @@ export interface AiFaqInput {
   title: string;
   description?: string;
   metaDescription?: string;
+  category?: string;
+  productType?: string;
   specs: Record<string, string>;
   jsonId?: string;
   jsonTitle?: string;
@@ -61,6 +63,8 @@ export async function generateFaqsWithAI(
         `Write between 5 and 10 FAQs from a shopper's perspective for this product.\n\n` +
         `Title: ${input.title}\n` +
         (input.sku ? `SKU: ${input.sku}\n` : "") +
+        (input.category ? `Category: ${input.category}\n` : "") +
+        (input.productType ? `Product type: ${input.productType}\n` : "") +
         `URL: ${input.url}\n\n` +
         (input.jsonId
           ? `JSON source ID: ${input.jsonId}\n`

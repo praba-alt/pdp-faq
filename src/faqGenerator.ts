@@ -3,6 +3,8 @@
   url: string;
   title: string;
   description?: string;
+  category?: string;
+  productType?: string;
   specs: Record<string, string>;
 }
 
@@ -15,11 +17,13 @@ export interface ProductFaqResult {
   sku?: string;
   url: string;
   title: string;
+  category?: string;
+  productType?: string;
   faqs: FaqItem[];
 }
 
 export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
-  const { url, title, description, specs } = product;
+  const { url, title, description, category, productType, specs } = product;
   const faqs: FaqItem[] = [];
 
   const safeTitle = title || "this product";
@@ -90,7 +94,7 @@ export function generateFaqsForProduct(product: ProductData): ProductFaqResult {
     answer: fixMojibake(faq.answer),
   }));
 
-  return { url, title: safeTitle, faqs: cleanedFaqs };
+  return { url, title: safeTitle, category, productType, faqs: cleanedFaqs };
 }
 
 function findSpec(specs: Record<string, string>, candidates: string[]): string | undefined {

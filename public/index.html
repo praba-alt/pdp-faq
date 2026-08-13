@@ -1245,7 +1245,15 @@
         if (!Array.isArray(data)) return;
 
         const rows = [];
-        rows.push(["sku", "url", "title", "question", "answer"]);
+        rows.push([
+          "sku",
+          "url",
+          "title",
+          "category",
+          "product_type",
+          "question",
+          "answer",
+        ]);
         const normalizeCsvText = (value) =>
           String(value ?? "")
             .replace(/Ã‚/g, "")
@@ -1263,12 +1271,16 @@
           const sku = normalizeCsvText(item.sku || "");
           const url = normalizeCsvText(item.url || "");
           const title = normalizeCsvText(item.title || "");
+          const category = normalizeCsvText(item.category || "");
+          const productType = normalizeCsvText(item.productType || "");
           item.faqs.forEach((faq, index) => {
             if (!faq) return;
             rows.push([
               index === 0 ? sku : "",
               index === 0 ? url : "",
               index === 0 ? title : "",
+              index === 0 ? category : "",
+              index === 0 ? productType : "",
               normalizeCsvText(faq.question || ""),
               normalizeCsvText(faq.answer || ""),
             ]);

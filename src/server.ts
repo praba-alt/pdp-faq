@@ -89,6 +89,8 @@ async function processItems(
     sku: string;
     url: string;
     title: string;
+    category?: string;
+    productType?: string;
     faqs: any[];
     error?: string;
   }[]
@@ -97,6 +99,8 @@ async function processItems(
     sku: string;
     url: string;
     title: string;
+    category?: string;
+    productType?: string;
     faqs: any[];
     error?: string;
   }[] = [];
@@ -114,6 +118,8 @@ async function processItems(
         sku: item.sku ?? parsed.sku,
         url,
         title: parsed.title || parsed.jsonTitle || item.title || "",
+        category: item.category,
+        productType: item.productType,
         description:
           parsed.description ||
           parsed.jsonDescription ||
@@ -141,6 +147,8 @@ async function processItems(
             sku: baseProduct.sku ?? "",
             url,
             title: baseProduct.title,
+            category: baseProduct.category,
+            productType: baseProduct.productType,
             faqs,
           });
           continue;
@@ -159,6 +167,8 @@ async function processItems(
             sku: baseProduct.sku ?? "",
             url,
             title: fallback.title,
+            category: fallback.category,
+            productType: fallback.productType,
             faqs: fallback.faqs,
             error: (fallback as any).error,
           });
@@ -175,6 +185,8 @@ async function processItems(
         sku: baseProduct.sku ?? "",
         url,
         title: faq.title,
+        category: faq.category,
+        productType: faq.productType,
         faqs: faq.faqs,
       });
     } catch (err: any) {
